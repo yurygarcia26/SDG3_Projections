@@ -99,6 +99,18 @@ CI_function <- function(model_result, training_data, testing_data, info_df, regi
         sample_errors <- sample(errors, size=nrow(testing_data), replace=TRUE)
         predictions <- predict(boosted_glm_model, newdata = testing_data[, selected_features])
         bootstrapped_predictions <- predictions + sample_errors
+
+    } else if (method == "Boost_gam") {
+        boosted_gam_model <- boostGAM(y ~ ., data = X_train_split, family = gaussian(),
+                                      mstop = model$bestTune$mstop, prune = model$bestTune$prune)
+        
+        # Compute Bootstrapped predictions
+        fit           <- predict(boosted_gam_model, newdata = X_train_split)
+        errors        <- fit - y_train_split$Outcome
+        sample_errors <- sample(errors, size=nrow(testing_data), replace=TRUE)
+        predictions   <- predict(boosted_gam_model, newdata = testing_data[, selected_features])
+        bootstrapped_predictions <- predictions + sample_errors
+      
     }
     bootstrap_predictions[i, ] <- bootstrapped_predictions
   }
