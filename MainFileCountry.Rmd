@@ -1,0 +1,210 @@
+---
+title: ""
+output: html_document
+date: "2023-09-17"
+knit: (function(inputFile, encoding) { 
+      out_dir <- 'Rmarkdowns';
+      rmarkdown::render(inputFile,
+                        encoding=encoding, 
+                        output_file=file.path(dirname(inputFile), out_dir, 'MainFileCountry.html')) })
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<center><p style="color:darkblue"> <font size="6">  **SDG Mathematical Models** </font> </p> </center>
+<center><p style="color:darkblue"> <br> [EpiMEC](https://paginas.cimpa.ucr.ac.cr/Epimec/) </font> </p> </center>
+<center><p style="color:black"> <font size="3"> Last compiled on `r format(Sys.time(), '%m/%d/%Y')` </font> </p> </center>
+
+# Introduction
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(openxlsx)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(randomForest)
+library(glmnet)
+library(cowplot)
+library(Boruta) #Feature selection
+library(boot)
+library(xgboost)
+library(grid)
+library(IRdisplay)
+library(cowplot)
+library(boot)
+library(caret)
+library(mboost)
+library(ranger)
+library(gam)
+```
+
+### Import Functions
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# === Import Functions ==================== #
+
+# Models
+source("Functions/Modeling/RandomForest.R")
+source("Functions/Modeling/Lasso.R")
+source("Functions/Modeling/XGBoost.R")
+source("Functions/Modeling/Boost_glm.R")
+source("Functions/Modeling/Boost_gam.R")
+source("Functions/Modeling/RFRanger.R")
+#source("Functions/Modeling/gamSpline.R")
+
+
+# Metrics Estimation MAE and RMED
+source("Functions/Results/Est_Metrics.R")
+
+# Confident Intervals
+source("Functions/Results/ConfidentIntervalGeneral.R")
+
+# Plot Results
+source("Functions/Results/PlotResultsGeneral.R")
+
+# Get All Results
+source("Functions/Results/GetResultsGeneral.R")
+
+```
+
+### Read and Clean Data
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+Imputed_data<- as.data.frame(read.xlsx(
+  "./Imputed_data/Final_imputed_data_All.xlsx"))
+
+Outcome_name = "SUICM"
+# Outcome_name = "CovIndex"
+
+Imputed_data$Indicator[
+  which(Imputed_data$Indicator== Outcome_name)] <- "Outcome"
+
+if (Outcome_name == "CovIndex"){
+  ind_suicf <- which(Imputed_data$Indicator=="SUICF")
+  ind_suicm <- which(Imputed_data$Indicator=="SUICM")
+  Imputed_data <-Imputed_data[-c(ind_suicf,ind_suicm),]
+}else{
+  
+  ind_CovIndex <-which(Imputed_data$Indicator=="CovIndex")
+  ind_dma <- which(Imputed_data$Country=="DMA"|Imputed_data$Country=="KNA")
+  if (Outcome_name=="SUICF"){
+    ind_suic <- which(Imputed_data$Indicator=="SUICM")
+  }else{
+    ind_suic <- which(Imputed_data$Indicator=="SUICF")}
+  Imputed_data <- Imputed_data[-c(ind_suic,ind_dma,ind_CovIndex),]
+}
+
+ind_redundant<- which(Imputed_data$Indicator%in%c("COV16","COV17",
+                                                  "COV18","COV19",
+                                                  "COV20","HEALTH16"))
+Imputed_data <- Imputed_data[-ind_redundant,]
+```
+
+###---------------------------------------------------------
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+# This file has a classification for the countries in Continent or Island
+
+cod_countries <- as.data.frame(
+  read.xlsx("Imputed_data/CountryCodes_Americas.xlsx"))
+
+paises_contiente <- cod_countries %>% 
+  filter(Ubication=="Continent") %>% 
+  dplyr::select(CountryCode)
+
+islas <- cod_countries %>%
+  filter(Ubication=="Island") %>%
+  dplyr::select(CountryCode)
+```
+
+### Perform model fitting and save results
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+set.seed(123)
+
+Data_used <- Imputed_data %>% filter(Country%in%c("CAN"))
+# Data_used <- Imputed_data
+
+# Identify the total countries in the file
+list_of_countries <- unique(Data_used$Country)
+
+list_of_figures           <-list()  # Save the prediction for each country
+list_of_relevant_var      <-list()  # Save selected variables
+list_of_final_prediction  <-list()
+info_df <- data.frame()
+list_of_metrics_by_country <- data.frame()
+
+for(country in list_of_countries){
+  
+  tryCatch({
+
+    # Decide if you want to add hyper parameter tuning or
+    # cross validation to the model fit
+    
+    hyper_tune <- TRUE
+    cv         <- TRUE
+  
+    results_country <- get_results(country, "Country", Data_used,
+                                           hyper_tune, cv, Outcome_name)
+
+    #general info
+    info_df <- rbind(info_df, results_country$info_df_)
+
+    #figures
+    list_of_figures[[country]] <- results_country$figure_[[1]]
+  
+    #save metrics  
+    final_metrics = results_country$metrics_ 
+    final_metrics$Country = country
+
+    list_of_metrics_by_country<-rbind(list_of_metrics_by_country, final_metrics)
+  
+    #save predictions to plot later
+    list_of_final_prediction[[country]]<-results_country$figure_[[2]]
+  
+  }, error = function(err){
+
+    cat(paste("Error computing results for ", country, " ", err, "\n"))
+
+  })
+
+}
+```
+
+### Write results
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+today <- Sys.Date()
+# Create a list of plots using your figures
+plot_list <- lapply(names(list_of_figures), function(obj_name) {
+  figure  <- list_of_figures[[obj_name]]
+  # Add the title equal to the object's name
+  figure +
+    theme_bw() +
+    labs(x = "", y = "", subtitle = obj_name)
+})
+# Arrange the plots in a grid using plot_grid
+grid_plot <- plot_grid(plotlist = plot_list, nrow = 9 , ncol = 4)
+
+# Display the grid of figures
+figure <- grid_plot
+ggsave(paste("./Figures/Country_Results/All_Predictions_", today, "_", 
+             Outcome_name, ".pdf",sep=""), figure, width = 15, height = 20) 
+result_list <- list(
+  "Model_Info"=info_df,
+  "Metrics"   =list_of_metrics_by_country)
+
+write.xlsx(result_list, paste("./Figures/Country_Results/Relevant_var_", today, "_", 
+                              Outcome_name, ".xlsx", sep=""))
+
+write.xlsx(list_of_final_prediction,
+           paste("./Figures/Country_Results/Final_predictions_", today, "_",
+                 Outcome_name, ".xlsx", sep=""))
+```
+
