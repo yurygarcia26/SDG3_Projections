@@ -23,7 +23,7 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   # Lasso
   Lasso_results <- Lasso_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv)
   
-  XGBoost (put inside capture output to avoid long logs)
+  # XGBoost (put inside capture output to avoid long logs)
   cat("Tunning XGBoost \n")
   xgboost_output <- capture.output(xgboost_results <- XGBoost_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv))
   cat("XGBoost done \n")

@@ -127,8 +127,8 @@ islas <- cod_countries %>%
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 set.seed(123)
 
-Data_used <- Imputed_data %>% filter(Country%in%c("CAN"))
-# Data_used <- Imputed_data
+# Data_used <- Imputed_data %>% filter(Country%in%c("CAN"))
+Data_used <- Imputed_data
 
 # Identify the total countries in the file
 list_of_countries <- unique(Data_used$Country)
