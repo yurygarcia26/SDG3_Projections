@@ -70,7 +70,7 @@ source("Functions/Results/GetResultsGeneral.R")
 # Read Data and Compute Aggregate Data
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-region_cols <- c("Ubication", "Region", "SubRegion")
+region_cols <- c("Ubication", "SubRegion")
 population_variable <- "SOC5"
 
 Imputed_data_0 <- as.data.frame(
@@ -133,11 +133,11 @@ for(region_column in region_cols){
                               by.y=c("Country", "Year"), all.x=TRUE)
       
       indicator_data$WeightedValueRaw <- indicator_data$Value * indicator_data$PopWeight
+      indicator_data <- na.omit(indicator_data)
       
       Aggregate_Data_Region_Indicator <- indicator_data %>% group_by(Year, Region) %>%
-        summarise(MedianWeightedValue=median(WeightedValueRaw),
-                  MedianValue=median(Value),
-                  MeanWeightedValue=mean(WeightedValueRaw),
+        summarise(MedianValue=median(Value),
+                  WeightedValue=sum(WeightedValueRaw),
                   MeanValue=mean(Value), .groups = 'drop')
       
       Aggregate_Data_Region_Indicator$Indicator <- var
@@ -151,7 +151,7 @@ for(region_column in region_cols){
   }
   
   write.xlsx(Aggregate_Data, paste("./Imputed_Data/Aggregate_Data_",
-                                   region_column, ".xlsx"))
+                                   region_column, ".xlsx", sep=""))
 
 }
 ```
@@ -160,7 +160,7 @@ for(region_column in region_cols){
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 today <- Sys.Date()
-value_col_to_use <- "MedianValue"
+value_col_to_use <- "WeightedValue" # MedianValue, MeanValue
 indicators <- c("CovIndex", "SUICM")
 
 for (region_column in region_cols) {
@@ -171,7 +171,7 @@ for (region_column in region_cols) {
     
     Aggregate_Data_Use <- as.data.frame(
       read.xlsx(paste("./Imputed_Data/Aggregate_Data_",
-                                   region_column, ".xlsx")))
+                                   region_column, ".xlsx", sep="")))
     
     Aggregate_Data_Use <- Aggregate_Data_Use[,
                                              c("Year", "Region",

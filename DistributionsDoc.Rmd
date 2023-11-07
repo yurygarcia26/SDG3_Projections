@@ -269,9 +269,8 @@ for (region_use in region_values) {
     indicator_data$WeightedValueRaw <- indicator_data$Value * indicator_data$PopWeight
     
     Aggregate_Data_Region_Indicator <- indicator_data %>% group_by(Year, Region) %>%
-      summarise(MedianWeightedValue=median(WeightedValueRaw),
-                MedianValue=median(Value),
-                MeanWeightedValue=mean(WeightedValueRaw),
+      summarise(MedianValue=median(Value),
+                WeightedValue=sum(WeightedValueRaw),
                 MeanValue=mean(Value), .groups = 'drop')
     
     Aggregate_Data_Region_Indicator$Indicator <- var
@@ -311,12 +310,11 @@ kable(data_)%>%
 
 Which gives us the following four values for year `2000` at `Southern Cone`:
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-weighted_median <- median(data_$SOC13_Weighted)
+```{r}
 median <- median(data_$SOC13)
-weighted_mean <- mean(data_$SOC13_Weighted)
+weighted_value <- sum(data_$SOC13_Weighted)
 mean <- mean(data_$SOC13)
-cat(paste(weighted_median, median, weighted_mean, mean))
+cat(paste(median, weighted_value, mean))
 ```
 
 Which agrees with the values at the computed aggregated data:

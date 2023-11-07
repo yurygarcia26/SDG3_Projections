@@ -41,7 +41,7 @@ Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_t
 
     data_relev <- subset(all_data_by_country, select = -c(Year, Outcome))
     data_relev <- data_relev[, which(colnames(data_relev)!=region_col)]
-    relevant_var = colnames(train_data_relev)
+    relevant_var = colnames(data_relev)
   }
   
   cat("Hyperparameter tunning for Lasso model ...\n")

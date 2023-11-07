@@ -1814,7 +1814,11 @@ Southern Cone
 </table>
 <p>Which gives us the following four values for year <code>2000</code>
 at <code>Southern Cone</code>:</p>
-<pre><code>## 0.392304508881308 2.253014 0.56311864689636 2.81348775</code></pre>
+<pre class="r"><code>median &lt;- median(data_$SOC13)
+weighted_value &lt;- sum(data_$SOC13_Weighted)
+mean &lt;- mean(data_$SOC13)
+cat(paste(median, weighted_value, mean))</code></pre>
+<pre><code>## 2.253014 2.25247458758544 2.81348775</code></pre>
 <p>Which agrees with the values at the computed aggregated data:</p>
 <table class="table table" style="width: auto !important; margin-left: auto; margin-right: auto; font-size: 14px; margin-left: auto; margin-right: auto;">
 <thead>
@@ -1826,13 +1830,10 @@ Year
 Region
 </th>
 <th style="text-align:right;">
-MedianWeightedValue
-</th>
-<th style="text-align:right;">
 MedianValue
 </th>
 <th style="text-align:right;">
-MeanWeightedValue
+WeightedValue
 </th>
 <th style="text-align:right;">
 MeanValue
@@ -1851,13 +1852,10 @@ Indicator
 Southern Cone
 </td>
 <td style="text-align:right;">
-0.3923045
-</td>
-<td style="text-align:right;">
 2.253014
 </td>
 <td style="text-align:right;">
-0.5631186
+2.252475
 </td>
 <td style="text-align:right;">
 2.813488
