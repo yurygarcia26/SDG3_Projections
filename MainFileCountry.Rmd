@@ -192,9 +192,7 @@ for (Outcome_name in Outcome_names) {
   write.xlsx(list_of_final_prediction,
              paste("./Figures/Country_Results/Final_predictions_", today, "_",
                    Outcome_name, ".xlsx", sep=""))
-
 }
-
 ```
 
 

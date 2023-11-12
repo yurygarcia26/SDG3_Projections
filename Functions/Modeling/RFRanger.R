@@ -30,12 +30,13 @@ rfRanger_function <- function(region_col, training_data, testing_data, ..., hype
   relevant_var$Feature  <-rownames(relevant_var)
   
   # Sort features by importance
-  sorted_features <-  relevant_var[order( relevant_var$Overall, decreasing = TRUE), ]
+  sorted_features <-  relevant_var[order(relevant_var$Overall, decreasing = TRUE), ]
   
   for (threshold in 3:(nrow(sorted_features))) {
     
     # Select the top N important features
     selected_features <- sorted_features$Feature[1:threshold]
+    selected_features_importances <- sorted_features$Overall[1:threshold]
     
     # Subset the training and testing data with selected features
     X_train_selected <- subset(X_train, select = selected_features)
@@ -61,18 +62,20 @@ rfRanger_function <- function(region_col, training_data, testing_data, ..., hype
       best_accuracy            <- accuracy
       best_threshold           <- threshold
       final_features           <- selected_features
+      final_features_weights   <- selected_features_importances
       final_model              <- rf_model_selected
     }
     
   }
   
-  cat("Random Forest Done \n")
+  cat("Random Forest (Ranger) Done \n")
   
   return(lst(
     model           = final_model,
     Fit             = training_data,
     Predictions     = testing_data,
     features        = final_features,
+    importances     = final_features_weights,
     best_threshold  = best_threshold))
   
 }

@@ -1,0 +1,70 @@
+---
+title: "Models"
+output: html_document
+date: "2023-11-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+library(openxlsx)
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(gridExtra)
+library(randomForest)
+library(glmnet)
+library(cowplot)
+library(Boruta) #Feature selection
+library(boot)
+library(xgboost)
+library(grid)
+library(IRdisplay)
+library(cowplot)
+library(boot)
+library(caret)
+library(mboost)
+library(ranger)
+library(gam)
+library(hrbrthemes)
+library(cowplot)
+library(kableExtra)
+```
+
+### Model Fitting and Evaluation
+
+In this section we explain the procedure to tune, fit, evaluate and save the different models created for each country/region. The code organization for this task corresponds to the following structure in our github repository:
+
+- MainFileCountry.Rmd:
+- MainFileRegion.Rmd:
+- Functions
+  - Modeling
+    - Boost_gam.R:
+    - Boost_glm.R:
+    - Lasso.R:
+    - RandomForest.R:
+    - RFRanger.R:
+    - XGBoost.R:
+  - Results
+    - ConfidentIntervalGeneral.R:
+    - Est_Metrics.R:
+    - GetResultsGeneral.R:
+    - PlotResultsGeneral.R:
+- Figures:
+- Imputed_Data:
+
+
+
+The main algorithm starts with the data in a long format such as the following.
+
+```{r echo=FALSE, message=FALSE}
+Imputed_data<- as.data.frame(read.xlsx(
+    "../Imputed_data/Final_imputed_data_All.xlsx"))
+kable(head(Imputed_data, 10))%>%
+  kable_styling(full_width = FALSE)%>%
+  kable_styling(font_size = 14)
+```
+
+Then, the data is filtered by each country or region and a series of regression models are tested using a training/testing split approach. For each country/region, the training data is formed by all observations before 2015 and th

@@ -77,6 +77,7 @@ Boost_gam_function <- function(region_col, training_data, testing_data, ..., hyp
     
     # Select the top N important features
     selected_features <- importance_scores_no_zero$features[1:threshold]
+    selected_features_importances <- importance_scores_no_zero$importance[1:threshold]
     
     # Subset the training and testing data with selected features
     X_train_selected <- subset(X_train, select = selected_features)
@@ -111,6 +112,7 @@ Boost_gam_function <- function(region_col, training_data, testing_data, ..., hyp
       best_accuracy            <- accuracy
       best_threshold           <- threshold
       final_features           <- selected_features
+      final_features_weights   <- selected_features_importances
       final_model              <- model_train_selected
     }else{
       cont= cont+1
@@ -126,6 +128,7 @@ Boost_gam_function <- function(region_col, training_data, testing_data, ..., hyp
     Fit             = training_data,
     Predictions     = testing_data,
     features        = final_features,
+    importances     = final_features_weights,
     best_threshold  = best_threshold))
 }
 

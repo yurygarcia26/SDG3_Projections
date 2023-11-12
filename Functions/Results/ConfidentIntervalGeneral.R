@@ -90,8 +90,15 @@ CI_function <- function(model_result, training_data, testing_data, info_df, regi
         bootstrapped_predictions <- predictions + sample_errors
         
     } else if (method == "Boost_glm") {
-        boosted_glm_model <- boostGLM(y ~ ., data = X_train_split, family = gaussian(),
-                                    mstop = model$bestTune$mstop, prune = model$bestTune$prune)
+
+        # This function doesn't work
+        # boosted_glm_model <- boostGLM(y ~ ., data = X_train_split, family = gaussian(),
+        #                             mstop = model$bestTune$mstop, prune = model$bestTune$prune)
+
+        # Train with caret then.
+        tunegrid <- expand.grid(mstop = model$bestTune$mstop, prune=model$bestTune$prune)
+        boosted_glm_model <- train(X_train_split, y_train_split$Outcome,
+        method="glmboost", metric='RMSE', tuneGrid=tunegrid)
         
         # Compute Bootstrapped predictions
         fit <- predict(boosted_glm_model, newdata = X_train_split)
@@ -101,9 +108,16 @@ CI_function <- function(model_result, training_data, testing_data, info_df, regi
         bootstrapped_predictions <- predictions + sample_errors
 
     } else if (method == "Boost_gam") {
-        boosted_gam_model <- boostGAM(y ~ ., data = X_train_split, family = gaussian(),
-                                      mstop = model$bestTune$mstop, prune = model$bestTune$prune)
-        
+
+        # This function doesn't work
+        # boosted_gam_model <- boostGAM(y ~ ., data = X_train_split, family = gaussian(),
+        #                               mstop = model$bestTune$mstop, prune = model$bestTune$prune)
+
+        # Train with caret then.
+        tunegrid <- expand.grid(mstop = model$bestTune$mstop, prune=model$bestTune$prune)
+        boosted_gam_model <- train(X_train_split, y_train_split$Outcome,
+        method="gamboost", metric='RMSE', tuneGrid=tunegrid)
+
         # Compute Bootstrapped predictions
         fit           <- predict(boosted_gam_model, newdata = X_train_split)
         errors        <- fit - y_train_split$Outcome

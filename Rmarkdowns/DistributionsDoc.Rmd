@@ -1,12 +1,7 @@
 ---
 title: "Distributions"
 output: html_document
-date: "2023-10-29"
-knit: (function(inputFile, encoding) { 
-      out_dir <- 'Rmarkdowns';
-      rmarkdown::render(inputFile,
-                        encoding=encoding, 
-                        output_file=file.path(dirname(inputFile), out_dir, 'Distributions.html')) })
+date: "2023-11-11"
 ---
 
 ```{r setup, include=FALSE}
@@ -48,7 +43,7 @@ distributions of our co-variables aggregated by county, for each year.
 To aggregate data, we inspect the measurement type of each co-variable. The following table presents this information:
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-covariate_types <- as.data.frame(read.xlsx("./Imputed_data/Covariable_Types.xlsx"))
+covariate_types <- as.data.frame(read.xlsx("../Imputed_data/Covariable_Types.xlsx"))
 
 covariate_types %>% 
   mutate(across(everything(), ~cell_spec(.x, color = factor(covariate_types$Type,
@@ -71,7 +66,7 @@ We read the data, remove redundant co-variables, and initialize some plotting va
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
-Imputed_data <- as.data.frame(read.xlsx("./Imputed_data/Final_imputed_data_All.xlsx"))
+Imputed_data <- as.data.frame(read.xlsx("../Imputed_data/Final_imputed_data_All.xlsx"))
 ind_redundant <- which(Imputed_data$Indicator%in%c("COV16","COV17","COV18","COV19","COV20"))
 Imputed_data <- Imputed_data[-c(ind_redundant),]
 Data_used <- Imputed_data
@@ -89,7 +84,7 @@ colors <- c("#3366CC","#DC3912","#FF9900","#109618","#990099",
 
 We create a list of grid-plots per variable.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
 
 list_of_figures_per_var <- list()
 
@@ -119,11 +114,6 @@ for (var in variables) {
       theme_bw() +
       labs(x = "", y = "", subtitle = obj_name)
   })
-  # Arrange the plots in a grid using plot_grid
-  # grid_plot <- plot_grid(plotlist = plot_list, nrow = 9 , ncol = 4)
-  # ggsave(paste("./Figures/Distributions/Dist_Plot_",
-  #              var, ".png", sep=""),
-  #        grid_plot, width = 15, height = 20)
   list_of_figures_per_var[[var]] <- plot_list
 }
 ```
@@ -140,13 +130,13 @@ list_of_figures_per_var$HEALTH15[[10]]
 
 We stored the grid plots in the `./Figures/Distributions/` path of the main project.
 
-![Grid Plot for ECON7](./Figures/Distributions/Dist_Plot_ECON7.png)
+![Grid Plot for ECON7](../Figures/Distributions/Dist_Plot_ECON7.png)
 This way we have the distribution of each variable per year, over all countries. 
 This is useful for aggregate analysis.
 
 We also created heatmaps and lineplots to further inspect the shape and attributes of each variable across countries and years.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
 
 list_of_heatmaps_per_var <- list()
 list_of_lineplots_per_var <- list()
@@ -206,13 +196,13 @@ To create aggregate data (that is, at the region level), for each Year we group 
 
 For example let's see the aggregate code applied to the *SubRegion* classification.
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
 
 region_column <- "SubRegion"
 population_variable <- "SOC5"
 
 Imputed_data_0 <- as.data.frame(
-  read.xlsx("./Imputed_data/Final_imputed_data_All_with_Regions.xlsx"))
+  read.xlsx("../Imputed_data/Final_imputed_data_All_with_Regions.xlsx"))
 
 cat(paste("Aggregating by ", region_column, " ... \n"))
 
@@ -286,7 +276,7 @@ for (region_use in region_values) {
 
 To check computations, for example let's inspect the values of region `Southern Cone` at year 2000 for indicator `SOC13`:
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r}
 data_ <- Imputed_data_0[Imputed_data_0$SubRegion == 'Southern Cone', ]
 data_ <- data_[data_$Year == 2000, ]
 data_ <- data_[data_$Indicator %in% c("SOC5", "SOC13"), ]

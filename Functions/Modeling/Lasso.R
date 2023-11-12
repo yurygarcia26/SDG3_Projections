@@ -1,6 +1,7 @@
 lasso_feature_selection <- function(region_col, region_data){
-  
+
   set.seed(123) 
+
   # X (predictors) and y (target variable)
   y <- as.vector(region_data$Outcome)
   X <- subset(region_data, select = -c(Year, Outcome))  # Exclude the "Outcome" column
@@ -18,8 +19,13 @@ lasso_feature_selection <- function(region_col, region_data){
   var_names <- colnames(X[, selected_column_indices])
   
   # Identify relevant variables based on coefficients
-  selected_variables <- coef(lasso_model, s = "lambda.min")
-  return(var_names)
+  var_imps <- as.data.frame(as.matrix(coef(lasso_model, s = "lambda.min")))
+
+  list_return = list()
+  list_return$var_names <- var_names
+  list_return$var_imps <- var_imps
+
+  return(list_return)
 }
 
 Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_tune=TRUE, cv=TRUE) {
@@ -29,12 +35,18 @@ Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_t
   # Perform Lasso Feature Selection
   cat("Feature Selection for Lasso ... \n")
   all_data_by_country = rbind(training_data, testing_data)
-  relevant_Var <- lasso_feature_selection(region_col, all_data_by_country)
+  relevant_Var_Info <- lasso_feature_selection(region_col, all_data_by_country)
+
+  relevant_Var <- relevant_Var_Info$var_names
+  relevant_Var_Imps <- relevant_Var_Info$var_imps
   
   if (length(relevant_Var) > 2){
-    Relevant_data  <- all_data_by_country[,c(region_col,"Year","Outcome",relevant_Var)]
+
+    Relevant_data  <- all_data_by_country[,c(region_col, "Year", "Outcome", relevant_Var)]
     training_data_use <- Relevant_data %>% filter(Year%in%2000:2015)
-    testing_data_use  <- Relevant_data %>% filter(Year%in%2016:2019)     
+    testing_data_use  <- Relevant_data %>% filter(Year%in%2016:2019)
+    relevant_Var_Imps <- relevant_Var_Imps[relevant_Var, ]
+
   }else{
     training_data_use <- all_data_by_country %>% filter(Year%in%2000:2015)
     testing_data_use  <- all_data_by_country %>% filter(Year%in%2016:2019)
@@ -42,6 +54,8 @@ Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_t
     data_relev <- subset(all_data_by_country, select = -c(Year, Outcome))
     data_relev <- data_relev[, which(colnames(data_relev)!=region_col)]
     relevant_var = colnames(data_relev)
+    relevant_Var_Imps <- relevant_Var_Imps[relevant_Var, ]
+
   }
   
   cat("Hyperparameter tunning for Lasso model ...\n")
@@ -92,13 +106,14 @@ Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_t
   }
   
   cat("Lasso Done \n")
-  # Return results: testing data, best s value, best model
-  return(list(
+
+  return(lst(
     model           = final_model,
     Fit             = training_data,
     Predictions     = testing_data,
     features        = relevant_Var,
+    importances     = relevant_Var_Imps,
     best_threshold  = best_threshold,
-    best_s = best_s
+    best_s          = best_s
   ))
 }

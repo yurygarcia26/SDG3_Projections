@@ -11,10 +11,11 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   training_data <- Data_by_region_wider%>%filter(Year%in%2000:2015)
   testing_data  <- Data_by_region_wider%>%filter(Year%in%2016:2019)
 
+  best_s <- 1
+
   # Step 3: Estimate predictions with each model
   # Add more models as needed ...
 
-  # Experiment removing XGBoost
   model_names <- c("Random Forest", "Lasso", "XGBoost", "Boost_glm", "Boost_gam")
 
   # Random Forest
@@ -56,7 +57,11 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   model_results     <- model_results_use$Predictions
 
   model_selected = model_results_use$model
-  best_s = model_results_use$best_s # In case of lasso model
+  
+  if(final_method_name == 'Lasso'){
+    best_s = model_results_use$best_s # In case of lasso model
+  }
+
   saveRDS(model_selected, paste("./Models/best_model_", region, "_", Outcome_name, ".rds", sep=""))
 
   # Save information by region
@@ -65,7 +70,15 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
                               Relevant_Var       = model_results_use$features, # Selected variables
                               Selected_feat      = length(model_results_use$features),
                               method             = final_method_name)
-  info_df_region[region_col] <- region
+
+  info_df_region[region_col] <- rep(c(region),each=dim(info_df_region)[1])
+  info_df_region$best_s_lasso <- rep(c(best_s),each=dim(info_df_region)[1])
+
+  tryCatch({
+    info_df_region$Selected_feat_importance <- model_results_use$importances
+  }, error = function(err){
+    cat(paste("Error putting selected_feat_importance ", err, " Using", final_method_name, " \n"))
+  })
 
   # Step 6: Compute Confident Intervals
   cat("Confidence Intervals computing ... \n")

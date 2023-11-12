@@ -162,6 +162,7 @@ for(region_column in region_cols){
 today <- Sys.Date()
 value_col_to_use <- "WeightedValue" # MedianValue, MeanValue
 indicators <- c("CovIndex", "SUICM")
+region_cols <- c("Ubication", "SubRegion")
 
 for (region_column in region_cols) {
 
@@ -222,7 +223,7 @@ for (region_column in region_cols) {
         results_region <- get_results(region, "Region", Data_used,
                                              hyper_tune, cv, Outcome_name)
         
-        #general info
+        # general info
         info_df <- rbind(info_df, results_region$info_df_)
         
         #figures
@@ -231,7 +232,7 @@ for (region_column in region_cols) {
         #save metrics  
         final_metrics = results_region$metrics_ 
         final_metrics$region = region
-        
+
         list_of_metrics_by_region<-rbind(list_of_metrics_by_region,
                                          final_metrics)
         
@@ -241,7 +242,7 @@ for (region_column in region_cols) {
       }, error = function(err){
         cat(paste("Error computing results for", region, err, "\n"))
       })
-      
+  
     }
     
     # Create a list of plots using your figures
