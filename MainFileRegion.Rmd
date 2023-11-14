@@ -159,144 +159,125 @@ for(region_column in region_cols){
 # Compute best models per region
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-today <- Sys.Date()
+
 value_col_to_use <- "WeightedValue" # MedianValue, MeanValue
 indicators <- c("CovIndex", "SUICM")
 region_cols <- c("Ubication", "SubRegion")
 
-for (region_column in region_cols) {
+Aggregate_Data_Use_All <- data.frame()
 
-  for (Outcome_name in indicators) {
-    
-    cat(paste("Model creation for ", region_column, " and ", Outcome_name, "\n"))
-    
-    Aggregate_Data_Use <- as.data.frame(
+for (region_column in region_cols) {
+  Aggregate_Data_Use <- as.data.frame(
       read.xlsx(paste("./Imputed_Data/Aggregate_Data_",
                                    region_column, ".xlsx", sep="")))
-    
-    Aggregate_Data_Use <- Aggregate_Data_Use[,
-                                             c("Year", "Region",
-                                               "Indicator", value_col_to_use)]
-    colnames(Aggregate_Data_Use) <-c("Year", "Region",
-                                     "Indicator", "Value")
-    
-    Aggregate_Data_Use$Indicator[
-      which(Aggregate_Data_Use$Indicator== Outcome_name)] <- "Outcome"
-    
-    if (Outcome_name == "CovIndex"){
-      ind_suicf <- which(Aggregate_Data_Use$Indicator=="SUICF")
-      ind_suicm <- which(Aggregate_Data_Use$Indicator=="SUICM")
-      Aggregate_Data_Use <-Aggregate_Data_Use[-c(ind_suicf,ind_suicm),]
-    }else{
-      
-      ind_CovIndex <-which(Aggregate_Data_Use$Indicator=="CovIndex")
-      ind_dma <- which(Aggregate_Data_Use$Country=="DMA"|Aggregate_Data_Use$Country=="KNA")
-      if (Outcome_name=="SUICF"){
-        ind_suic <- which(Aggregate_Data_Use$Indicator=="SUICM")
-      }else{
-        ind_suic <- which(Aggregate_Data_Use$Indicator=="SUICF")}
-      Aggregate_Data_Use <- Aggregate_Data_Use[-c(ind_suic,ind_dma,ind_CovIndex),]
+  Aggregate_Data_Use_All <- rbind(Aggregate_Data_Use_All, Aggregate_Data_Use)
 }
-    
-    
-    set.seed(123)
-    Data_used <- Aggregate_Data_Use
-    
-    # Identify the total regions in the file
-    list_of_regions <- unique(Data_used$Region)            
-    list_of_figures           <-list()  # Save the prediction for each region
-    list_of_relevant_var      <-list()  # Save selected variables
-    list_of_final_prediction  <-list()
-    
-    info_df <- data.frame()
-    list_of_metrics_by_region <- data.frame()
 
-    for(region in list_of_regions){
-      
-      tryCatch({
-        
-        # Decide if you want to add hyper parameter tuning or cross validation
-        # to the model fit
-        hyper_tune <- TRUE
-        cv         <- TRUE
-        
-        results_region <- get_results(region, "Region", Data_used,
-                                             hyper_tune, cv, Outcome_name)
-        
-        # general info
-        info_df <- rbind(info_df, results_region$info_df_)
-        
-        #figures
-        list_of_figures[[region]] <- results_region$figure_[[1]]
-        
-        #save metrics  
-        final_metrics = results_region$metrics_ 
-        final_metrics$region = region
-
-        list_of_metrics_by_region<-rbind(list_of_metrics_by_region,
-                                         final_metrics)
-        
-        #save predictions to plot later
-        list_of_final_prediction[[region]]<-results_region$figure_[[2]]
-        
-      }, error = function(err){
-        cat(paste("Error computing results for", region, err, "\n"))
-      })
+for (Outcome_name in indicators) {
   
-    }
+  cat(paste("Model creation for ", Outcome_name, "\n"))
+  
+  Aggregate_Data_Use <- Aggregate_Data_Use_All[,
+                                               c("Year", "Region",
+                                                 "Indicator", value_col_to_use)]
+  colnames(Aggregate_Data_Use) <-c("Year", "Region",
+                                   "Indicator", "Value")
+  
+  Aggregate_Data_Use$Indicator[
+    which(Aggregate_Data_Use$Indicator== Outcome_name)] <- "Outcome"
+  
+  if (Outcome_name == "CovIndex"){
+    ind_suicf <- which(Aggregate_Data_Use$Indicator=="SUICF")
+    ind_suicm <- which(Aggregate_Data_Use$Indicator=="SUICM")
+    Aggregate_Data_Use <-Aggregate_Data_Use[-c(ind_suicf,ind_suicm),]
+  }else{
+    ind_CovIndex <-which(Aggregate_Data_Use$Indicator=="CovIndex")
+    ind_dma <- which(Aggregate_Data_Use$Country=="DMA"|Aggregate_Data_Use$Country=="KNA")
+    if (Outcome_name=="SUICF"){
+      ind_suic <- which(Aggregate_Data_Use$Indicator=="SUICM")
+    }else{
+      ind_suic <- which(Aggregate_Data_Use$Indicator=="SUICF")}
+    Aggregate_Data_Use <- Aggregate_Data_Use[-c(ind_suic,ind_dma,ind_CovIndex),]
+  }
+
+  set.seed(123)
+  Data_used <- Aggregate_Data_Use
+  
+  # Identify the total regions in the file
+  list_of_regions <- unique(Data_used$Region)            
+  list_of_figures           <-list()  # Save the prediction for each region
+  list_of_relevant_var      <-list()  # Save selected variables
+  list_of_final_prediction  <-list()
+  
+  info_df <- data.frame()
+  list_of_metrics_by_region <- data.frame()
+  
+  for(region in list_of_regions){
     
-    # Create a list of plots using your figures
-    plot_list <- lapply(names(list_of_figures), function(obj_name) {
-      figure  <- list_of_figures[[obj_name]]
-      # Add the title equal to the object's name
-      figure +
-        theme_bw() +
-        labs(x = "", y = "", subtitle = obj_name)
+    tryCatch({
+      
+      # Decide if you want to add hyper parameter tuning or cross validation
+      # to the model fit
+      hyper_tune <- TRUE
+      cv         <- TRUE
+      
+      results_region <- get_results(region, "Region", Data_used,
+                                    hyper_tune, cv, Outcome_name)
+      
+      # general info
+      info_df <- rbind(info_df, results_region$info_df_)
+      
+      #figures
+      list_of_figures[[region]] <- results_region$figure_[[1]]
+      
+      #save metrics  
+      final_metrics = results_region$metrics_ 
+      final_metrics$region = region
+      
+      list_of_metrics_by_region<-rbind(list_of_metrics_by_region,
+                                       final_metrics)
+      
+      #save predictions to plot later
+      list_of_final_prediction[[region]]<-results_region$figure_[[2]]
+      
+    }, error = function(err){
+      cat(paste("Error computing results for", region, err, "\n"))
     })
     
-    # Ubication: Two values: Continent, Island
-    ncol_ = 1
-    nrow_ = 2
-    
-    # Region: 4 values: Center, Island, North and South
-    if(region_column =='Region'){
-      ncol_ = 2
-    }
-    
-    # SubRegion: 8 values: Southern Cone, ... Mexico
-    if(region_column =='SubRegion'){
-      ncol_ = 3
-      nrow_ = 3
-    }
-    
-    # Arrange the plots in a grid using plot_grid
-    grid_plot <- plot_grid(plotlist=plot_list, nrow=nrow_ , ncol=ncol_)
-    
-    # Display the grid of figures
-    figure <- grid_plot
-    ggsave(paste("./Figures/Region_Results/All_Predictions",
-                 Outcome_name, region_column, value_col_to_use,
-                 today, ".pdf", sep="_"),
-           figure, width = 15, height = 20) 
-    result_list <- list(
-      "Model_Info"=info_df,
-      "Metrics"   =list_of_metrics_by_region)
-    
-    write.xlsx(result_list, paste("./Figures/Region_Results/Relevant_var",
-                                  Outcome_name,
-                                  region_column,
-                                  value_col_to_use,
-                                  today,
-                                  ".xlsx", sep="_"))
-
-    write.xlsx(list_of_final_prediction,
-               paste("./Figures/Region_Results/Final_predictions",
-                     Outcome_name,
-                     region_column,
-                     value_col_to_use,
-                     today,
-                     ".xlsx", sep="_"))
   }
+
+  # Create a list of plots using your figures
+  plot_list <- lapply(names(list_of_figures), function(obj_name) {
+    figure  <- list_of_figures[[obj_name]]
+    # Add the title equal to the object's name
+    figure +
+      theme_bw() +
+      labs(x = "", y = "", subtitle = obj_name)
+  })
+
+  ncol_ = 3
+  nrow_ = 3
+  
+  # Arrange the plots in a grid using plot_grid
+  grid_plot <- plot_grid(plotlist=plot_list, nrow=nrow_ , ncol=ncol_)
+  
+  # Display the grid of figures
+  figure <- grid_plot
+  ggsave(paste("./Figures/Region_Results/All_Predictions",
+               Outcome_name, "Region.pdf", sep="_"),
+         figure, width = 15, height = 20) 
+  result_list <- list(
+    "Model_Info"= info_df,
+    "Metrics"   = list_of_metrics_by_region)
+  
+  write.xlsx(result_list, paste("./Figures/Region_Results/Relevant_var",
+                                Outcome_name,
+                                "Region.xlsx", sep="_"))
+
+  write.xlsx(list_of_final_prediction,
+             paste("./Figures/Region_Results/Final_predictions",
+                   Outcome_name,
+                   "Region.xlsx", sep="_"))
 }
 ```
 

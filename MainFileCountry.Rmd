@@ -87,10 +87,10 @@ for (Outcome_name in Outcome_names) {
   cat("######################################################### \n")
   
   ### Read Data ============================================= ###
-  
+
   Imputed_data<- as.data.frame(read.xlsx(
     "./Imputed_data/Final_imputed_data_All.xlsx"))
-  
+
   Imputed_data$Indicator[
     which(Imputed_data$Indicator== Outcome_name)] <- "Outcome"
   
@@ -180,18 +180,18 @@ for (Outcome_name in Outcome_names) {
   
   # Display the grid of figures
   figure <- grid_plot
-  ggsave(paste("./Figures/Country_Results/All_Predictions_", today, "_", 
-               Outcome_name, ".pdf",sep=""), figure, width = 15, height = 20) 
+  ggsave(paste("./Figures/Country_Results/All_Predictions_", Outcome_name,
+               "_Country.pdf",sep=""), figure, width = 15, height = 20) 
   result_list <- list(
     "Model_Info"=info_df,
     "Metrics"   =list_of_metrics_by_country)
   
-  write.xlsx(result_list, paste("./Figures/Country_Results/Relevant_var_", today, "_", 
-                                Outcome_name, ".xlsx", sep=""))
+  write.xlsx(result_list, paste("./Figures/Country_Results/Relevant_var_", 
+                                Outcome_name, "_Country.xlsx", sep=""))
   
   write.xlsx(list_of_final_prediction,
-             paste("./Figures/Country_Results/Final_predictions_", today, "_",
-                   Outcome_name, ".xlsx", sep=""))
+             paste("./Figures/Country_Results/Final_predictions_",
+                   Outcome_name, "_Country.xlsx", sep=""))
 }
 ```
 

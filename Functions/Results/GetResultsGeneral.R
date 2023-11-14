@@ -43,13 +43,13 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   model_results_all <- list(rf_results, Lasso_results, xgboost_results, Boost_glm_results, gam_Boost_results)
 
   # Step 4: Estimate the metrics
-  metrics_models <- data.frame("metrics"=c("MAE", "RMED"))
+  metrics_models <- data.frame("metrics"=c("MAE", "RMSE"))
   for (i in c(1:length(model_results_all))) {
     metrics_models[paste("model", i, sep="")] = Est_Metrics_function(model_results_all[[i]]$Predictions)
   }
 
   # Step 5: Identify the best model
-  min_column        <- apply(metrics_models, 1, which.min)[1] - 1
+  min_column        <- apply(subset(metrics_models, select=-c(metrics)), 1, which.min)[[2]]
   final_method_name <- model_names[min_column]
   cat(paste("Best model: ", final_method_name, " \n"))
   
