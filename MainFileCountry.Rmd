@@ -76,7 +76,7 @@ source("Functions/Results/GetResultsGeneral.R")
 ```{r echo=FALSE, warning=FALSE, message=FALSE}
 set.seed(123)
 
-Outcome_names <- c("SUICM", "CovIndex")
+Outcome_names <- c("SUICF", "SUICM", "CovIndex")
 
 for (Outcome_name in Outcome_names) {
   

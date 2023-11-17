@@ -161,7 +161,7 @@ for(region_column in region_cols){
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 value_col_to_use <- "WeightedValue" # MedianValue, MeanValue
-indicators <- c("CovIndex", "SUICM")
+indicators <- c("SUICF") #, "CovIndex", "SUICM")
 region_cols <- c("Ubication", "SubRegion")
 
 Aggregate_Data_Use_All <- data.frame()
