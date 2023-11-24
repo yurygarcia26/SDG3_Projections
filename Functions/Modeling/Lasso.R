@@ -28,28 +28,48 @@ lasso_feature_selection <- function(region_col, region_data){
   return(list_return)
 }
 
-Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_tune=TRUE, cv=TRUE) {
+Lasso_function <- function(region_col, training_data, testing_data, ...,
+hyper_tune=TRUE, cv=TRUE, use_all=FALSE) {
   
   set.seed(123)
   
   # Perform Lasso Feature Selection
   cat("Feature Selection for Lasso ... \n")
-  all_data_by_country = rbind(training_data, testing_data)
+  if(use_all){
+    all_data_by_country = training_data
+  }else{
+    all_data_by_country = rbind(training_data, testing_data)
+  }
+
   relevant_Var_Info <- lasso_feature_selection(region_col, all_data_by_country)
 
   relevant_Var <- relevant_Var_Info$var_names
   relevant_Var_Imps <- relevant_Var_Info$var_imps
-  
+
+  min_year_train <- 2000
+  max_year_test <- 2019
+
+  if(use_all){
+    max_year_train <- 2019
+    min_year_test <- 2000
+  }else{
+    max_year_train <- 2015
+    min_year_test <- 2016
+  }
+
+  cat(paste("Using year limits for training set:", min_year_train, max_year_train, "\n"))
+  cat(paste("Using year limits for testing set:", min_year_test, max_year_test, "\n"))
+
   if (length(relevant_Var) > 2){
 
     Relevant_data  <- all_data_by_country[,c(region_col, "Year", "Outcome", relevant_Var)]
-    training_data_use <- Relevant_data %>% filter(Year%in%2000:2015)
-    testing_data_use  <- Relevant_data %>% filter(Year%in%2016:2019)
+    training_data_use <- Relevant_data %>% filter(Year%in%min_year_train:max_year_train)
+    testing_data_use  <- Relevant_data %>% filter(Year%in%min_year_test:max_year_test)
     relevant_Var_Imps <- relevant_Var_Imps[relevant_Var, ]
 
   }else{
-    training_data_use <- all_data_by_country %>% filter(Year%in%2000:2015)
-    testing_data_use  <- all_data_by_country %>% filter(Year%in%2016:2019)
+    training_data_use <- all_data_by_country %>% filter(Year%in%min_year_train:max_year_train)
+    testing_data_use  <- all_data_by_country %>% filter(Year%in%min_year_test:max_year_test)
 
     data_relev <- subset(all_data_by_country, select = -c(Year, Outcome))
     data_relev <- data_relev[, which(colnames(data_relev)!=region_col)]
@@ -69,7 +89,7 @@ Lasso_function <- function(region_col, training_data, testing_data, ..., hyper_t
   
   y_test <- testing_data$Outcome
   X_test <- as.matrix(subset(testing_data2, select = -Outcome))
-  
+
   # Initialize variables to keep track of the best model and its performance
   best_accuracy  <- Inf
   best_threshold <- length(relevant_Var)

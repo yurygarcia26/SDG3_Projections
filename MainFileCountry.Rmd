@@ -139,7 +139,8 @@ for (Outcome_name in Outcome_names) {
       cv         <- TRUE
       
       results_country <- get_results(country, "Country", Data_used,
-                                     hyper_tune, cv, Outcome_name)
+                                     hyper_tune, cv, Outcome_name,
+                                     use_all=FALSE, add_fit=TRUE)
       
       #general info
       info_df <- rbind(info_df, results_country$info_df_)

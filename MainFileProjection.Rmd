@@ -6,7 +6,7 @@ knit: (function(inputFile, encoding) {
       out_dir <- 'Rmarkdowns';
       rmarkdown::render(inputFile,
                         encoding=encoding, 
-                        output_file=file.path(dirname(inputFile), out_dir, 'MainFileRegion.html')) })
+                        output_file=file.path(dirname(inputFile), out_dir, 'MainFileProjection.html')) })
 ---
 
 ```{r setup, include=FALSE}
@@ -70,108 +70,68 @@ source("Functions/Results/GetResultsGeneral.R")
 # Read Data and Compute Aggregate Data
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-region_cols <- c("Ubication", "SubRegion")
 population_variable <- "SOC5"
-
 Imputed_data_0 <- as.data.frame(
   read.xlsx("./Imputed_data/Final_imputed_data_All_with_Regions.xlsx"))
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-for(region_column in region_cols){
-  
-  cat(paste("Aggregating by ", region_column, " ... \n"))
-  
-  Imputed_data <- Imputed_data_0[, c("Country",
+Imputed_data <- Imputed_data_0[, c("Country",
                                    "Indicator",
                                    "Year",
-                                   "Value",
-                                   region_column)]
-  
-  if(region_column != "Region"){
-    Imputed_data$Region <- Imputed_data[, c(region_column)]
-  }
-  
-  Imputed_data <- Imputed_data[, c("Country",
-                                   "Indicator",
-                                   "Year",
-                                   "Value",
-                                   "Region")]
-  
-  Aggregate_Data <- data.frame()
-  region_values <- unique(Imputed_data$Region)
-  
-  for (region_use in region_values) {
-    
-    cat(paste("Processing ", region_use, " ... \n"))
-    
-    # Population Data
-    pop_data <- Imputed_data[Imputed_data$Indicator == "SOC5",
-                             c("Country", "Year", "Value", "Region")]
-    
-    pop_data <- pop_data[pop_data$Region == region_use,
+                                   "Value")]
+# Population Data
+pop_data <- Imputed_data[Imputed_data$Indicator == "SOC5",
                          c("Country", "Year", "Value")]
-    colnames(pop_data) <- c("Country", "Year", "Population")
-    total_pop <- pop_data %>% group_by(Year) %>%
-      summarise(TotalPop=sum(Population), .groups = 'drop')
-    pop_data <- merge(pop_data, total_pop, by.x=c("Year"),
-                      by.y=c("Year"), all.x=TRUE)
-    pop_data$PopWeight <- pop_data$Population/pop_data$TotalPop
-    
-    var_data <- Imputed_data[Imputed_data$Indicator != "SOC5", ]
-    var_data <- var_data[var_data$Region == region_use, ]
-    variables_region <- unique(var_data$Indicator)
-    
-    Aggregate_Data_Region <- data.frame()
-    
-    for (var in variables_region) {
-      
-      # cat(paste("Processing ", var, " for ", region_use, " ... \n"))
-      
-      indicator_data <- var_data[which(var_data$Indicator == var), ]
-      indicator_data <- merge(indicator_data, pop_data, by.x=c("Country", "Year"),
-                              by.y=c("Country", "Year"), all.x=TRUE)
-      
-      indicator_data$WeightedValueRaw <- indicator_data$Value * indicator_data$PopWeight
-      indicator_data <- na.omit(indicator_data)
-      
-      Aggregate_Data_Region_Indicator <- indicator_data %>% group_by(Year, Region) %>%
-        summarise(MedianValue=median(Value),
-                  WeightedValue=sum(WeightedValueRaw),
-                  MeanValue=mean(Value), .groups = 'drop')
-      
-      Aggregate_Data_Region_Indicator$Indicator <- var
-      
-      Aggregate_Data_Region <- rbind(Aggregate_Data_Region, Aggregate_Data_Region_Indicator)
-      
-    }
-    
-    Aggregate_Data <- rbind(Aggregate_Data, Aggregate_Data_Region)
-    
-  }
-  
-  write.xlsx(Aggregate_Data, paste("./Imputed_Data/Aggregate_Data_",
-                                   region_column, ".xlsx", sep=""))
 
+pop_data <- pop_data[,c("Country", "Year", "Value")]
+colnames(pop_data) <- c("Country", "Year", "Population")
+total_pop <- pop_data %>% group_by(Year) %>%
+  summarise(TotalPop=sum(Population), .groups = 'drop')
+pop_data <- merge(pop_data, total_pop, by.x=c("Year"),
+                  by.y=c("Year"), all.x=TRUE)
+pop_data$PopWeight <- pop_data$Population/pop_data$TotalPop
+
+var_data <- Imputed_data[Imputed_data$Indicator != "SOC5", ]
+variables_ <- unique(var_data$Indicator)
+
+Aggregate_Data <- data.frame()
+    
+for (var in variables_) {
+  
+  # cat(paste("Processing ", var, " ... \n"))
+  
+  indicator_data <- var_data[which(var_data$Indicator == var), ]
+  indicator_data <- merge(indicator_data, pop_data, by.x=c("Country", "Year"),
+                          by.y=c("Country", "Year"), all.x=TRUE)
+  
+  indicator_data$WeightedValueRaw <- indicator_data$Value * indicator_data$PopWeight
+  indicator_data <- na.omit(indicator_data)
+  
+  Aggregate_Data_Indicator <- indicator_data %>% group_by(Year) %>%
+    summarise(MedianValue=median(Value),
+              WeightedValue=sum(WeightedValueRaw),
+              MeanValue=mean(Value), .groups = 'drop')
+  
+  Aggregate_Data_Indicator$Indicator <- var
+  Aggregate_Data <- rbind(Aggregate_Data, Aggregate_Data_Indicator)
 }
+
+Aggregate_Data$Region <- 'Americas'
+
+write.xlsx(Aggregate_Data, "./Imputed_Data/Aggregate_Data_Americas.xlsx")
 ```
 
-# Compute best models per region
+# Compute best models for Americas (using all data available)
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 value_col_to_use <- "WeightedValue" # MedianValue, MeanValue
-indicators <- c("SUICF") #, "CovIndex", "SUICM")
-region_cols <- c("Ubication", "SubRegion")
+indicators <- c("SUICF", "CovIndex", "SUICM")
+region_cols <- c("Region")
 
-Aggregate_Data_Use_All <- data.frame()
-
-for (region_column in region_cols) {
-  Aggregate_Data_Use <- as.data.frame(
-      read.xlsx(paste("./Imputed_Data/Aggregate_Data_",
-                                   region_column, ".xlsx", sep="")))
-  Aggregate_Data_Use_All <- rbind(Aggregate_Data_Use_All, Aggregate_Data_Use)
-}
+Aggregate_Data_Use_All <- as.data.frame(
+  read.xlsx("./Imputed_Data/Aggregate_Data_Americas.xlsx"))
 
 for (Outcome_name in indicators) {
   
@@ -221,10 +181,11 @@ for (Outcome_name in indicators) {
       hyper_tune <- TRUE
       cv         <- TRUE
       
+      # get results but using all data for training (use_all parameter)
       results_region <- get_results(region, "Region", Data_used,
                                     hyper_tune, cv, Outcome_name,
-                                    use_all=FALSE, add_fit=TRUE)
-      
+                                    use_all=TRUE, add_fit=FALSE)
+
       # general info
       info_df <- rbind(info_df, results_region$info_df_)
       
@@ -265,7 +226,7 @@ for (Outcome_name in indicators) {
   # Display the grid of figures
   figure <- grid_plot
   ggsave(paste("./Figures/Region_Results/All_Predictions",
-               Outcome_name, "Region.pdf", sep="_"),
+               Outcome_name, "Americas.pdf", sep="_"),
          figure, width = 15, height = 20) 
   result_list <- list(
     "Model_Info"= info_df,
@@ -273,12 +234,15 @@ for (Outcome_name in indicators) {
   
   write.xlsx(result_list, paste("./Figures/Region_Results/Relevant_var",
                                 Outcome_name,
-                                "Region.xlsx", sep="_"))
+                                "Americas.xlsx", sep="_"))
 
   write.xlsx(list_of_final_prediction,
              paste("./Figures/Region_Results/Final_predictions",
                    Outcome_name,
-                   "Region.xlsx", sep="_"))
+                   "Americas.xlsx", sep="_"))
 }
 ```
+
+
+
 

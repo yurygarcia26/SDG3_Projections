@@ -1,4 +1,5 @@
-get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_name){
+get_results <- function(region, region_col,
+Data_used, hyper_tune, cv, Outcome_name, ..., use_all=FALSE, add_fit=TRUE){
 
   start_time <- Sys.time()
   cat(paste(" ==== ", region, " ==== \n"))
@@ -8,26 +9,40 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   Data_by_region_wider <- Data_by_region %>% pivot_wider(names_from = Indicator, values_from = Value)
 
   # Step 2: Define training and testing data
-  training_data <- Data_by_region_wider%>%filter(Year%in%2000:2015)
-  testing_data  <- Data_by_region_wider%>%filter(Year%in%2016:2019)
+
+  if (use_all){
+    # For projections to 2030
+    training_data <- Data_by_region_wider%>%filter(Year%in%2000:2019)
+    testing_data  <- Data_by_region_wider%>%filter(Year%in%2000:2019)
+  } else {
+    training_data <- Data_by_region_wider%>%filter(Year%in%2000:2015)
+    testing_data  <- Data_by_region_wider%>%filter(Year%in%2016:2019)
+  }
 
   best_s <- 1
 
   # Step 3: Estimate predictions with each model
   # Add more models as needed ...
 
-  model_names <- c("Random Forest", "Lasso", "XGBoost", "Boost_glm", "Boost_gam")
+  if(use_all){
+    model_names <- c("Random Forest", "Lasso", "Boost_glm", "Boost_gam")
+  }else{
+    model_names <- c("Random Forest", "Lasso", "XGBoost", "Boost_glm", "Boost_gam")
+  }
 
   # Random Forest
   rf_results    <- random_forest_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv)
 
   # Lasso
-  Lasso_results <- Lasso_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv)
+  Lasso_results <- Lasso_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv, use_all=use_all)
   
   # XGBoost (put inside capture output to avoid long logs)
-  cat("Tunning XGBoost \n")
-  xgboost_output <- capture.output(xgboost_results <- XGBoost_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv))
-  cat("XGBoost done \n")
+
+  if(use_all == FALSE){
+    cat("Tunning XGBoost \n")
+    xgboost_output <- capture.output(xgboost_results <- XGBoost_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv))
+    cat("XGBoost done \n")
+  }
 
   # Boost glm
   Boost_glm_results <- Boost_glm_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv)
@@ -40,7 +55,11 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   gam_Boost_results <- Boost_gam_function(region_col, training_data, testing_data, hyper_tune=hyper_tune, cv=cv)
   cat("GAM Boost done \n")
 
-  model_results_all <- list(rf_results, Lasso_results, xgboost_results, Boost_glm_results, gam_Boost_results)
+  if(use_all){
+      model_results_all <- list(rf_results, Lasso_results, Boost_glm_results, gam_Boost_results)
+  } else{
+      model_results_all <- list(rf_results, Lasso_results, xgboost_results, Boost_glm_results, gam_Boost_results)
+  }
 
   # Step 4: Estimate the metrics
   metrics_models <- data.frame("metrics"=c("MAE", "RMSE"))
@@ -89,7 +108,7 @@ get_results <- function(region, region_col, Data_used, hyper_tune, cv, Outcome_n
   method_selected = info_df_region$method[nrow(info_df_region)]
   cat("Plot computing ... \n")
   figure_region <- plot_function(Data_by_region_wider, model_results_use$Fit, model_result_CI, 
-                                              method_selected, add_fit=TRUE)
+                                              method_selected, add_fit=add_fit)
   
   end_time <- Sys.time()
   cat(paste(region_col, " ", region, " took ", end_time-start_time, " minutes \n", sep=""))
