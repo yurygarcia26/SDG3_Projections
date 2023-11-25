@@ -56,10 +56,6 @@ hyper_tune=TRUE, cv=TRUE, use_all=FALSE) {
     max_year_train <- 2015
     min_year_test <- 2016
   }
-
-  cat(paste("Using year limits for training set:", min_year_train, max_year_train, "\n"))
-  cat(paste("Using year limits for testing set:", min_year_test, max_year_test, "\n"))
-
   if (length(relevant_Var) > 2){
 
     Relevant_data  <- all_data_by_country[,c(region_col, "Year", "Outcome", relevant_Var)]
@@ -73,7 +69,7 @@ hyper_tune=TRUE, cv=TRUE, use_all=FALSE) {
 
     data_relev <- subset(all_data_by_country, select = -c(Year, Outcome))
     data_relev <- data_relev[, which(colnames(data_relev)!=region_col)]
-    relevant_var = colnames(data_relev)
+    relevant_Var = colnames(data_relev)
     relevant_Var_Imps <- relevant_Var_Imps[relevant_Var, ]
 
   }

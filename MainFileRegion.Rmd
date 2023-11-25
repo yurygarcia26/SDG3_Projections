@@ -35,6 +35,7 @@ library(caret)
 library(mboost)
 library(ranger)
 library(gam)
+library(parallel)
 ```
 
 ### Import Functions
@@ -70,16 +71,15 @@ source("Functions/Results/GetResultsGeneral.R")
 # Read Data and Compute Aggregate Data
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-region_cols <- c("Ubication", "SubRegion")
+region_cols <- c("Ubication", "SubRegion", "RegionAll")
 population_variable <- "SOC5"
-
 Imputed_data_0 <- as.data.frame(
   read.xlsx("./Imputed_data/Final_imputed_data_All_with_Regions.xlsx"))
-```
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+Aggregate_Data_Use_All <- data.frame()
+
 for(region_column in region_cols){
-  
+
   cat(paste("Aggregating by ", region_column, " ... \n"))
   
   Imputed_data <- Imputed_data_0[, c("Country",
@@ -152,30 +152,31 @@ for(region_column in region_cols){
   
   write.xlsx(Aggregate_Data, paste("./Imputed_Data/Aggregate_Data_",
                                    region_column, ".xlsx", sep=""))
+  
+  Aggregate_Data_Use_All <- rbind(Aggregate_Data_Use_All, Aggregate_Data)
 
 }
+
+
+write.xlsx(Aggregate_Data_Use_All,
+           "./Imputed_Data/Aggregate_Data_ALL_REGIONS.xlsx")
+
+Aggregate_Data_Use_All <- as.data.frame(
+  read.xlsx("./Imputed_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
+
 ```
 
 # Compute best models per region
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-
 value_col_to_use <- "WeightedValue" # MedianValue, MeanValue
-indicators <- c("SUICF") #, "CovIndex", "SUICM")
-region_cols <- c("Ubication", "SubRegion")
-
-Aggregate_Data_Use_All <- data.frame()
-
-for (region_column in region_cols) {
-  Aggregate_Data_Use <- as.data.frame(
-      read.xlsx(paste("./Imputed_Data/Aggregate_Data_",
-                                   region_column, ".xlsx", sep="")))
-  Aggregate_Data_Use_All <- rbind(Aggregate_Data_Use_All, Aggregate_Data_Use)
-}
+indicators <- c("SUICF", "CovIndex", "SUICM")
 
 for (Outcome_name in indicators) {
   
+  cat(" ========================================= \n ")
   cat(paste("Model creation for ", Outcome_name, "\n"))
+  cat(" ========================================= \n ")
   
   Aggregate_Data_Use <- Aggregate_Data_Use_All[,
                                                c("Year", "Region",
@@ -257,8 +258,8 @@ for (Outcome_name in indicators) {
   })
 
   ncol_ = 3
-  nrow_ = 3
-  
+  nrow_ = 4
+
   # Arrange the plots in a grid using plot_grid
   grid_plot <- plot_grid(plotlist=plot_list, nrow=nrow_ , ncol=ncol_)
   

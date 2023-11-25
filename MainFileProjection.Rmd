@@ -35,6 +35,7 @@ library(caret)
 library(mboost)
 library(ranger)
 library(gam)
+library(parallel)
 ```
 
 ### Import Functions

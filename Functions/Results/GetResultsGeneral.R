@@ -84,14 +84,13 @@ Data_used, hyper_tune, cv, Outcome_name, ..., use_all=FALSE, add_fit=TRUE){
   saveRDS(model_selected, paste("./Models/best_model_", region, "_", Outcome_name, ".rds", sep=""))
 
   # Save information by region
-  info_df_region <- data.frame(
-                              Total_Variables    = length(unique(Data_by_region$Indicator)), # Total initial variables
-                              Relevant_Var       = model_results_use$features, # Selected variables
-                              Selected_feat      = length(model_results_use$features),
-                              method             = final_method_name)
+  info_df_region <- data.frame(Relevant_Var = model_results_use$features)  # Selected variables
 
-  info_df_region[region_col] <- rep(c(region),each=dim(info_df_region)[1])
-  info_df_region$best_s_lasso <- rep(c(best_s),each=dim(info_df_region)[1])
+  info_df_region$Total_Variables <- rep(c(length(unique(Data_by_region$Indicator))), each=dim(info_df_region)[1]) # Total initial variables
+  info_df_region$Selected_feat <- rep(c(length(model_results_use$features)), each=dim(info_df_region)[1]) # Selected variables
+  info_df_region$method <- rep(c(final_method_name), each=dim(info_df_region)[1])
+  info_df_region[region_col] <- rep(c(region), each=dim(info_df_region)[1])
+  info_df_region$best_s_lasso <- rep(c(best_s), each=dim(info_df_region)[1])
 
   tryCatch({
     info_df_region$Selected_feat_importance <- model_results_use$importances

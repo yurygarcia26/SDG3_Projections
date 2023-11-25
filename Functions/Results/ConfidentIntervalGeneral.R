@@ -1,18 +1,4 @@
-CI_function <- function(model_result, training_data, testing_data, info_df, region, region_col, best_s, Outcome_name){
-
-   # List all files in the folder
-  folder_path <- file.path(getwd(), "Models")
-  # Construct the file path
-  file_name <- paste0("best_model_", region, "_", Outcome_name, ".rds")
-  file_path <- file.path(folder_path, file_name)
-  model     <- readRDS(file_path)
-
-  # Set a seed for reproducibility
-  set.seed(123)  
-  data_region      <- info_df%>%filter(!!as.symbol(region_col)==region)
-  selected_features <- data_region$Relevant_Var
-  method            <- data_region$method[1]
-  n_samples         <- 100
+bounds_computation <- function(model, method, training_data, testing_data, selected_features, n_samples, multiplier, best_s){
 
   # Bootstrap Confidence Interval computation algorithm proposed in
   # Kumar, S.; and Srivastava, A. 2012. Bootstrap prediction
@@ -22,13 +8,23 @@ CI_function <- function(model_result, training_data, testing_data, info_df, regi
   # https://ntrs.nasa.gov/api/citations/20130014367/downloads/20130014367.pdf
   # See https://www.youtube.com/watch?v=c3gD_PwsCGM for an explanation
 
+  fit <- 0
+  predictions <- 0
+  lower_bound <- 0
+  upper_bound <- 0
+
   bootstrap_predictions <- matrix(0, nrow = n_samples, ncol = dim(testing_data)[1])
 
   tryCatch({
   for (i in 1:n_samples) {
     
     # Split the data into training and validation sets
-    train_indices <- sample(1:nrow(training_data), size = 0.8 * nrow(training_data))
+    if(multiplier == 1){
+      train_indices = c(1:nrow(training_data))
+    }else{
+      train_indices <- sample(1:nrow(training_data), size=multiplier * nrow(training_data))
+    }
+
     X_train_split <- training_data[train_indices, selected_features]
     y_train_split <- training_data[train_indices, "Outcome"]
     
@@ -133,20 +129,57 @@ CI_function <- function(model_result, training_data, testing_data, info_df, regi
   lower_bound <- apply(bootstrap_predictions, 2, function(x) quantile(x, 0.025))
   upper_bound <- apply(bootstrap_predictions, 2, function(x) quantile(x, 0.975))
 
-  model_result$lower_bound<-lower_bound
-  model_result$upper_bound<-upper_bound
+  list_return = list(
+    fit = fit,
+    predictions = predictions,
+    lower_bound = lower_bound,
+    upper_bound = upper_bound
+  )
 
-  return(model_result)
+  return(list_return)
 
   }, error = function(err){
     
     cat(paste("Error computing confidence intervals for ", region, " ", err, "\n"))
     cat("Will use std \n")
     uncertainty <- sd(model_result$Prediction)
-    model_result$lower_bound <-model_result$Prediction - uncertainty
-    model_result$upper_bound <-model_result$Prediction + uncertainty
-    return(model_result)
+    lower_bound <-model_result$Prediction - uncertainty
+    upper_bound <-model_result$Prediction + uncertainty
+
+    list_return = list(
+      fit = fit,
+      predictions = predictions,
+      lower_bound = lower_bound,
+      upper_bound = upper_bound
+    )
+
+    return(list_return)
 
   })
+}
 
+
+CI_function <- function(model_result, training_data, testing_data,
+                        info_df, region, region_col, best_s, Outcome_name){
+
+   # List all files in the folder
+  folder_path <- file.path(getwd(), "Models")
+  # Construct the file path
+  file_name <- paste0("best_model_", region, "_", Outcome_name, ".rds")
+  file_path <- file.path(folder_path, file_name)
+  model     <- readRDS(file_path)
+
+  # Set a seed for reproducibility
+  set.seed(123)  
+  data_region      <- info_df%>%filter(!!as.symbol(region_col)==region)
+  selected_features <- data_region$Relevant_Var
+  method            <- data_region$method[1]
+  n_samples         <- 100
+
+  bounds_results <- bounds_computation(model, method, training_data, testing_data, selected_features, 1000, 0.8, best_s)
+
+  model_result$lower_bound<-bounds_results$lower_bound
+  model_result$upper_bound<-bounds_results$upper_bound
+
+  return(model_result)
 }   
