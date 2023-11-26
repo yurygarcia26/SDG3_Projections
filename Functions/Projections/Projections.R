@@ -43,7 +43,7 @@ get_data_all_regions <- function(value_col_to_use){
 }
 
 
-Forecast_Function <- function(Outcome_name, region){
+Forecast_Function <- function(Outcome_name, region, diff=FALSE){
   
   # 1. Read current Region + Model Results:
   file_region_res <- paste('././Figures/Region_Results/Relevant_var_',
@@ -72,9 +72,17 @@ Forecast_Function <- function(Outcome_name, region){
   
   # 3. Create Test Data:
   
-  covariate_projections_file <- paste("././Imputed_Data/Covariable_Projections",
-                                      Outcome_name,
-                                      "Region.xlsx", sep="_")
+  if(diff == TRUE){
+    covariate_projections_file <- paste("././Imputed_Data/Covariable_Projections",
+                                        Outcome_name,
+                                        "withDiff_Region.xlsx", sep="_")
+  }else{
+    covariate_projections_file <- paste("././Imputed_Data/Covariable_Projections",
+                                        Outcome_name,
+                                        "Region.xlsx", sep="_")
+  }
+  
+  
   projection_data <- as.data.frame(read.xlsx(covariate_projections_file,
                                              sheet = region))
   X_test = projection_data[projection_data$Measure == 'Point.Forecast',
@@ -152,6 +160,6 @@ Forecast_Function <- function(Outcome_name, region){
 
 Outcome_name <- "SUICM"
 region <- "Americas"
-forecast_results <- Forecast_Function(Outcome_name, region)
+forecast_results <- Forecast_Function(Outcome_name, region, diff=FALSE)
 forecast_results$forecast_df
 forecast_results$forecast_figure

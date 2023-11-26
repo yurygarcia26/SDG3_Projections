@@ -23,7 +23,6 @@ library(ggplot2)
 library(gridExtra)
 library(randomForest)
 library(glmnet)
-library(cowplot)
 library(Boruta) #Feature selection
 library(boot)
 library(xgboost)
