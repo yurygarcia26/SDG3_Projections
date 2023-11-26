@@ -120,7 +120,7 @@ for (Outcome_name in Outcome_names) {
 
 
 # Testing:
-Covariable_Projection_Function("CovIndex", "Americas")
+Covariable_Projection_Function("SUICF", "Americas")
 
 # ==== Covariate Projections Done ==== #
 
