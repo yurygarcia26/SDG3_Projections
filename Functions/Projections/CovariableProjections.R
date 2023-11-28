@@ -30,12 +30,12 @@ Aggregate_Data_Use_All <- get_data_all_regions("WeightedValue")
 # MedianValue, MeanValue
 
 Covariable_Projection_Function <- function(Outcome_name, region, diff=TRUE){
-  
+
   cat(paste("=> Using Region ", region, " <= \n"))
   file_region_res <- paste('././Figures/Region_Results/Relevant_var_',
                            Outcome_name, '_Region.xlsx', sep='')
   actual_data <- Aggregate_Data_Use_All[Aggregate_Data_Use_All$Region == region, ]
-  
+
   data <- actual_data %>% pivot_wider(names_from = Indicator, values_from = Value)
   Years <- data$Year
   data <- subset(data, select = -c(Year, Region))
@@ -62,7 +62,7 @@ Covariable_Projection_Function <- function(Outcome_name, region, diff=TRUE){
     var_model <- vars::VAR(ts.matrix, p=1)
     cat("Forecast ===> \n")
     projection <- forecast(var_model, h=11)
-    # serial.test(var_model, lags.pt=10, type="PT.asymptotic")
+    # serial.test(var_model, lags.pt=1, type="PT.asymptotic")
     cat("Forecast done \n")
     covars <- names(projection$forecast)
 
@@ -105,7 +105,10 @@ Covariable_Projection_Function <- function(Outcome_name, region, diff=TRUE){
         geom_ribbon(aes(ymin = Lo.80, ymax = Hi.80), fill = "gray", alpha = 0.3) +
         geom_ribbon(aes(ymin = Lo.95, ymax = Hi.95), fill = "gray", alpha = 0.3) +
         labs(x = "Year", y = "Value") +
-        theme_bw() + theme(axis.text.x = element_text(angle = 280)) + ggtitle(covar)
+        theme_bw() + theme(axis.text.x = element_text(angle = 280)) + 
+        ggtitle(paste("Proyection 2020-2030 for", covar,
+                      "using model for", Outcome_name, "at",
+                      region, ". Diff=", diff))
       plots_list[[covar]] <- fig
     }
 
@@ -197,11 +200,12 @@ for (Outcome_name in Outcome_names) {
 }
 
 # Testing:
-res <- Covariable_Projection_Function("CovIndex", "Americas", diff = FALSE)
+res <- Covariable_Projection_Function("SUICF", "Americas", diff = FALSE)
 # Testing:
-res2 <- Covariable_Projection_Function("CovIndex", "Americas", diff = TRUE)
+res2 <- Covariable_Projection_Function("SUICF", "Americas", diff = TRUE)
+# Diff = TRUE Mostrar
 
-res$plots_list$ECON3
-res2$plots_list$ECON3
+res$plots_list$HEALTH14
+res2$plots_list$HEALTH14
 
 # ==== Covariate Projections Done ==== #

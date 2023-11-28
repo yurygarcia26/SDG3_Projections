@@ -42,7 +42,6 @@ get_data_all_regions <- function(value_col_to_use){
   return (Aggregate_Data_Use_All)
 }
 
-
 Forecast_Function <- function(Outcome_name, region, diff=FALSE){
   
   # 1. Read current Region + Model Results:
@@ -144,7 +143,9 @@ Forecast_Function <- function(Outcome_name, region, diff=FALSE){
     geom_ribbon(aes(ymin = Lower, ymax = Upper), fill = "gray", alpha = 0.3) +
     labs(x = "Year", y = "Value", title = paste("Model: ", method, ". ", 
                                                 "Forecast for 2020-2030 for ",
-                                                region, " (", Outcome_name, ").", sep="")) +
+                                                region, " (", Outcome_name, ").",
+                                                " Diff = ", diff,
+                                                sep="")) +
     theme_bw() + theme(axis.text.x = element_text(angle = 280))
   
   forecast_results <- list(
@@ -158,8 +159,8 @@ Forecast_Function <- function(Outcome_name, region, diff=FALSE){
 
 ######### ==== Main ==== #########
 
-Outcome_name <- "SUICM"
+Outcome_name <- "CovIndex"
 region <- "Americas"
-forecast_results <- Forecast_Function(Outcome_name, region, diff=FALSE)
+forecast_results <- Forecast_Function(Outcome_name, region, diff=TRUE)
 forecast_results$forecast_df
 forecast_results$forecast_figure
