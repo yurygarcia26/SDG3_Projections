@@ -168,7 +168,8 @@ Aggregate_Data_Use_All <- get_data_all_regions("WeightedValue")
 regions <- unique(Aggregate_Data_Use_All$Region)
 regions <- c("Americas" , "Continent", "Island", "Southern Cone",
              "Non Latin Caribbean", "Central America", "Andean Area",
-             "Brazil", "Latin Caribbean", "Mexico", "North America") 
+             "Brazil", "Latin Caribbean", "Mexico", "North America")
+
 for (Outcome_name in Outcome_names) {
   
   cat(paste("===", Outcome_name, "==== \n"))
