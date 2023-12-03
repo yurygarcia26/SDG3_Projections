@@ -12,6 +12,7 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
   predictions <- 0
   lower_bound <- 0
   upper_bound <- 0
+  new_model <- NULL
 
   bootstrap_predictions <- matrix(0, nrow = n_samples, ncol = dim(testing_data)[1])
 
@@ -47,6 +48,7 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
         # 5. Sum predictions and errors
         bootstrapped_predictions <- predictions + sample_errors
         # Same procedure for all other models
+        new_model <- rf_model
         
     } else if (method == "Lasso") {
         
@@ -64,6 +66,7 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
                                          newx = as.matrix(testing_data[, selected_features]),
                                          s=best_s))
         bootstrapped_predictions <- predictions + sample_errors
+        new_model <- lasso_model
         
     } else if (method == "XGBoost") {
         
@@ -84,6 +87,7 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
         sample_errors <- sample(errors, size=nrow(testing_data), replace=TRUE)
         predictions <- predict(xgb_model, newdata = as.matrix(testing_data[, selected_features]))
         bootstrapped_predictions <- predictions + sample_errors
+        new_model <- xgb_model
         
     } else if (method == "Boost_glm") {
 
@@ -102,6 +106,7 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
         sample_errors <- sample(errors, size=nrow(testing_data), replace=TRUE)
         predictions <- predict(boosted_glm_model, newdata = testing_data[, selected_features])
         bootstrapped_predictions <- predictions + sample_errors
+        new_model <- boosted_glm_model
 
     } else if (method == "Boost_gam") {
 
@@ -120,20 +125,22 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
         sample_errors <- sample(errors, size=nrow(testing_data), replace=TRUE)
         predictions   <- predict(boosted_gam_model, newdata = testing_data[, selected_features])
         bootstrapped_predictions <- predictions + sample_errors
+        new_model <- boosted_gam_model
       
     }
     bootstrap_predictions[i, ] <- bootstrapped_predictions
   }
 
   # Calculate the 95% prediction interval for prediction
-  lower_bound <- apply(bootstrap_predictions, 2, function(x) quantile(x, 0.025))
-  upper_bound <- apply(bootstrap_predictions, 2, function(x) quantile(x, 0.975))
+  lower_bound <- apply(bootstrap_predictions, 2, function(x) quantile(x, 0.025, na.rm=TRUE))
+  upper_bound <- apply(bootstrap_predictions, 2, function(x) quantile(x, 0.975, na.rm=TRUE))
 
   list_return = list(
     fit = fit,
     predictions = predictions,
     lower_bound = lower_bound,
-    upper_bound = upper_bound
+    upper_bound = upper_bound,
+    new_model = new_model
   )
 
   return(list_return)
@@ -142,15 +149,18 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
     
     cat(paste("Error computing confidence intervals for ", region, " ", err, "\n"))
     cat("Will use std \n")
-    uncertainty <- sd(model_result$Prediction)
-    lower_bound <-model_result$Prediction - uncertainty
-    upper_bound <-model_result$Prediction + uncertainty
+
+    predd <- predict(model, testing_data[, selected_features])
+    uncertainty <- sd(predd)
+    lower_bound <- predd - uncertainty
+    upper_bound <- predd + uncertainty
 
     list_return = list(
       fit = fit,
       predictions = predictions,
       lower_bound = lower_bound,
-      upper_bound = upper_bound
+      upper_bound = upper_bound,
+      new_model = new_model
     )
 
     return(list_return)

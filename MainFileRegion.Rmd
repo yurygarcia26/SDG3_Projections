@@ -149,7 +149,7 @@ for(region_column in region_cols){
     
   }
   
-  write.xlsx(Aggregate_Data, paste("./Imputed_Data/Aggregate_Data_",
+  write.xlsx(Aggregate_Data, paste("./Imputed_Data/Aggregate_Data/Aggregate_Data_",
                                    region_column, ".xlsx", sep=""))
   
   Aggregate_Data_Use_All <- rbind(Aggregate_Data_Use_All, Aggregate_Data)
@@ -158,10 +158,10 @@ for(region_column in region_cols){
 
 
 write.xlsx(Aggregate_Data_Use_All,
-           "./Imputed_Data/Aggregate_Data_ALL_REGIONS.xlsx")
+           "./Imputed_Data/Aggregate_Data/Aggregate_Data_ALL_REGIONS.xlsx")
 
 Aggregate_Data_Use_All <- as.data.frame(
-  read.xlsx("./Imputed_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
+  read.xlsx("./Imputed_Data/Aggregate_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
 
 ```
 

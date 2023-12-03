@@ -35,7 +35,7 @@ source("././Functions/Results/ConfidentIntervalGeneral.R")
 # Obtain a dataframe with aggregate data for all possible regions
 get_data_all_regions <- function(value_col_to_use){
   Aggregate_Data_Use_All <- as.data.frame(
-    read.xlsx("././Imputed_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
+    read.xlsx("././Imputed_data/Aggregate_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
   Aggregate_Data_Use_All <- Aggregate_Data_Use_All[, c("Year", "Region", "Indicator",
                                                        value_col_to_use)]
   colnames(Aggregate_Data_Use_All) <- c("Year", "Region", "Indicator", "Value")
@@ -58,6 +58,8 @@ Forecast_Function <- function(Outcome_name, region, diff=FALSE){
   file_path <- file.path(folder_path, file_name)
   model     <- readRDS(file_path)
   
+  cat(paste(method, "\n"))
+  
   # 2. Create Train Data:
   
   Aggregate_Data_Use_All <- get_data_all_regions("WeightedValue")
@@ -68,30 +70,27 @@ Forecast_Function <- function(Outcome_name, region, diff=FALSE){
   X_train <- X_train[X_train$Indicator %in% c(relevant_var, "Outcome"), ]
   X_train <- X_train %>% pivot_wider(names_from = Indicator, values_from = Value)
   X_train_ <- subset(X_train, select = -c(Year, Region))
-  
+
   # 3. Create Test Data:
   
   if(diff == TRUE){
-    covariate_projections_file <- paste("././Imputed_Data/Covariable_Projections",
+    covariate_projections_file <- paste("././Functions/Projections/Projection_Data/Covariable_Projections",
                                         Outcome_name,
                                         "withDiff_Region.xlsx", sep="_")
   }else{
-    covariate_projections_file <- paste("././Imputed_Data/Covariable_Projections",
+    covariate_projections_file <- paste("././Functions/Projections/Projection_Data/Covariable_Projections",
                                         Outcome_name,
                                         "Region.xlsx", sep="_")
   }
-  
-  
+
   projection_data <- as.data.frame(read.xlsx(covariate_projections_file,
                                              sheet = region))
   X_test = projection_data[projection_data$Measure == 'Point.Forecast',
                            c("Indicator", "Value", "Year") ]
   X_test <- X_test %>% pivot_wider(names_from = Indicator, values_from = Value)
   X_test_ <- subset(X_test, select = -c(Year))
-  
-  
+
   # Re train model and Predict
-  
   training_data <- X_train
   testing_data <- X_test
   selected_features <- relevant_var
@@ -100,13 +99,16 @@ Forecast_Function <- function(Outcome_name, region, diff=FALSE){
                                      selected_features, 1, 1, best_s)
   fit = pred_results$fit
   predictions = pred_results$predictions
-  
+  new_model = pred_results$new_model
+
+  # Save re-trained model
+  saveRDS(new_model, paste("././Functions/Projections/Models_2019/best_model_", region, "_", Outcome_name, ".rds", sep=""))
+
   # Compute Confidence Intervals for Predictions
-  
   CI_results <- bounds_computation(model, method, 
                                    training_data, testing_data, 
                                    selected_features, 500, 0.8, best_s)
-  
+
   # Save predictions
   real_df <- data.frame(
     "Year" = X_train$Year,
@@ -159,8 +161,45 @@ Forecast_Function <- function(Outcome_name, region, diff=FALSE){
 
 ######### ==== Main ==== #########
 
-Outcome_name <- "CovIndex"
-region <- "Americas"
-forecast_results <- Forecast_Function(Outcome_name, region, diff=TRUE)
-forecast_results$forecast_df
-forecast_results$forecast_figure
+# Save Forecast Results
+
+Outcome_names <- c("CovIndex", "SUICM", "SUICF")
+Aggregate_Data_Use_All <- get_data_all_regions("WeightedValue")
+regions <- unique(Aggregate_Data_Use_All$Region)
+regions <- c("Americas" , "Continent", "Island", "Southern Cone",
+             "Non Latin Caribbean", "Central America", "Andean Area",
+             "Brazil", "Latin Caribbean", "Mexico", "North America") 
+for (Outcome_name in Outcome_names) {
+  
+  cat(paste("===", Outcome_name, "==== \n"))
+  
+  list_of_figures <- list()
+  list_of_forecasts <- list()
+
+  for (region in regions) {
+    
+    cat(paste("->", region, "<- \n"))
+    tryCatch({
+      
+      forecast_results <- Forecast_Function(Outcome_name, region, diff=TRUE)
+    list_of_forecasts[[region]] <- forecast_results$forecast_df
+    list_of_figures[[region]] <- forecast_results$forecast_figure
+      
+    }, error = function(err){
+      cat(paste("Error", err, "continue \n"))})
+  }
+
+  # Arrange the plots in a grid using plot_grid
+  grid_plot <- plot_grid(plotlist = list_of_figures, nrow = 5 , ncol = 4)
+  
+  # Display the grid of figures
+  figure <- grid_plot
+  ggsave(paste("./Figures/Projections/All_Predictions_", Outcome_name,
+               "_Region.pdf",sep=""), figure, width = 15, height = 20) 
+  write.xlsx(list_of_forecasts, paste("./Figures/Projections/Forecasts_", 
+                                Outcome_name, "_Region.xlsx", sep=""))
+
+}
+
+
+

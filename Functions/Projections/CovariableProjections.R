@@ -16,14 +16,14 @@ library(cowplot)
 
 get_data_all_regions <- function(value_col_to_use){
   Aggregate_Data_Use_All <- as.data.frame(
-    read.xlsx("././Imputed_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
+    read.xlsx("././Imputed_data/Aggregate_Data/Aggregate_Data_ALL_REGIONS.xlsx"))
   Aggregate_Data_Use_All <- Aggregate_Data_Use_All[, c("Year", "Region", "Indicator",
                                                        value_col_to_use)]
   colnames(Aggregate_Data_Use_All) <- c("Year", "Region", "Indicator", "Value")
   ind_suicf <- which(Aggregate_Data_Use_All$Indicator=="SUICF")
   ind_suicm <- which(Aggregate_Data_Use_All$Indicator=="SUICM")
   ind_CovIndex <-which(Aggregate_Data_Use_All$Indicator=="CovIndex")
-  Aggregate_Data_Use_All <-Aggregate_Data_Use_All[-c(ind_suicf,ind_suicm, ind_CovIndex),]
+  Aggregate_Data_Use_All <-Aggregate_Data_Use_All[-c(ind_suicf,ind_suicm,ind_CovIndex),]
   return (Aggregate_Data_Use_All)
 }
 Aggregate_Data_Use_All <- get_data_all_regions("WeightedValue")
@@ -190,11 +190,11 @@ for (Outcome_name in Outcome_names) {
 
   }
   
-  write.xlsx(projection_df_list, paste("././Imputed_Data/Covariable_Projections",
+  write.xlsx(projection_df_list, paste("././Functions/Projections/Projection_Data/Covariable_Projections",
                                   Outcome_name,
                                   "Region.xlsx", sep="_"))
   
-  write.xlsx(projection_df_list2, paste("././Imputed_Data/Covariable_Projections",
+  write.xlsx(projection_df_list2, paste("././Functions/Projections/Projection_Data/Covariable_Projections",
                                        Outcome_name,
                                        "withDiff_Region.xlsx", sep="_"))
 }
