@@ -172,11 +172,9 @@ bounds_computation <- function(model, method, training_data, testing_data, selec
 CI_function <- function(model_result, training_data, testing_data,
                         info_df, region, region_col, best_s, Outcome_name){
 
-   # List all files in the folder
-  folder_path <- file.path(getwd(), "Models")
+  parentDir <- getwd()  # Make sure to choose the root directory as working directory
   # Construct the file path
-  file_name <- paste0("best_model_", region, "_", Outcome_name, ".rds")
-  file_path <- file.path(folder_path, file_name)
+  file_path <- paste(parentDir, "/Data/Models/best_model_", region, "_", Outcome_name, ".rds", sep="")
   model     <- readRDS(file_path)
 
   # Set a seed for reproducibility

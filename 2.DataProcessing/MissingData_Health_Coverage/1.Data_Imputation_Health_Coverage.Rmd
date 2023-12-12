@@ -1,0 +1,440 @@
+---
+title: ""
+output: html_document
+date: ""
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+<center><p style="color:darkblue"> <font size="6">  **Imputing Missing Data with miceRanger** </font> </p> </center>
+<center><p style="color:darkblue"> <br> [EpiMEC](https://paginas.cimpa.ucr.ac.cr/Epimec/) </font> </p> </center>
+
+<center><p style="color:black"> <font size="3"> Last compiled on `r format(Sys.time(), '%m/%d/%Y')` </font> </p> </center>
+
+
+## Introduction
+
+miceRanger performs Multiple Imputation by Chained Equations (MICE) with random forests. It can impute categorical and numeric data without much setup, and has an array of diagnostic plots available. A simple example can be found [here](https://github.com/farrellday/miceRanger). The parameters can be found [here](https://search.r-project.org/CRAN/refmans/miceRanger/html/miceRanger.html)</br>
+
+**Methodology:** MICE Ranger is an extension of the MICE method that uses decision trees (Random Forest) as imputation models. It is particularly effective for imputing missing values in large datasets with mixed data types.</br>
+**Use Case:** MICE Ranger is designed for handling missing data in large and complex datasets, such as those commonly encountered in data science and machine learning tasks. It can handle both continuous and categorical data efficiently.</br>
+**Complexity:** While it may require more computational resources due to decision tree modeling, it is still relatively easy to use, especially if you are familiar with the MICE framework.</br>
+</br>
+
+All files are available for download in [GitHub](https://github.com/yurygarcia26/SDG3_Projections/)
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(openxlsx)
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(imputeTS)
+library(miceRanger)
+library(downloadthis)
+library(stats)
+library(VIM)
+library(lattice)
+library(knitr)
+library(DT)
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+name_file ="_All"
+Data1 <- as.data.frame(read.xlsx("./Data/5.Data_with_all_indicators.xlsx"))
+
+Data <-Data1%>%filter(Year%in%2000:2019) 
+#List of variables
+final_variables<-as.data.frame(read.xlsx("./Data/List_of_final_vairables.xlsx",sheet="All"))
+
+```
+
+## Original dataset
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+DT::datatable(Data,class='cell-border stripe',rownames=TRUE, filter="top", 
+editable=F, extension= "Buttons",
+options    = list(
+autoWidth  = TRUE, 
+scrollX    = TRUE,
+scrollY    = "200px",
+pageLength = 5,
+columnDefs = list(list(className = "dt-center", targets = "_all")),
+pageLength = nrow(Data),searchHighlight = TRUE,dom = "Bfrtip", buttons=''))
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Data%>%download_this(
+    output_name      = "Original_data",
+    output_extension = ".xlsx",
+    button_label     = "Download original data as xlsx",
+    button_type      = "success",
+    has_icon         = TRUE,
+    icon = "fa fa-save")
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+final_variables%>%download_this(
+    output_name      = "final_variables",
+    output_extension = ".xlsx",
+    button_label     = "Download list of variables as xlsx",
+    button_type      = "info",
+    has_icon         = TRUE,
+    icon = "fa fa-save")
+```
+
+
+## Data with more that 80% available
+
+We preprocess the data using a filter that selectively keeps data points containing over 80% of the available information, with the additional requirement that the missing data are not consecutive data from the last few years in the series. For that:
+
+1. we identify the indicators (Rows) that contain between 80% and 100% of the available information.
+
+3. Among these selected indicators, we pinpoint those where the final year's data is missing.
+
+4. Data rows that fail to meet the specified criteria are then removed from the dataset.
+
+5. Filter data by country.
+
+5. Finally, we apply the miceRanger algorithm to perform the imputation process.
+
+Note that we have removed data entries solely for countries with a significant amount of missing data. As a result, the final set of independent variables may differ from one country to another
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#Filter the list of counties available in the file
+countries<-unique(Data$Country)
+```
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#reshape the file
+Original_Data<-Data%>%pivot_wider(names_from = Year,values_from = Values)
+
+#Compute the percentage of data different from NA
+per_non_na<-round(rowMeans(!is.na(Original_Data[,3:ncol(Original_Data)])),digits = 2)
+
+#rows with less that 80% of data
+data_less_80_per<-which(per_non_na<0.8)
+#missing_data <-Original_Data[-data_less_80_per,]
+
+```
+
+```{r echo=FALSE,message=FALSE,warning=FALSE }
+#The health coverage has less than 80% of data
+rows_healthcov <-which(Original_Data$Indicator=="CovIndex")
+remove_rows    <-data_less_80_per[!data_less_80_per%in%rows_healthcov]
+
+#remove rows with less that 80% of information
+missing_data <-Original_Data[-remove_rows,]
+```
+
+
+## Plot variables with missing data
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+plot_missing_values<-function(Data){
+ggplot(Data, aes(x = Year, y = Value, color = Country, group = Country)) +
+  geom_line() +
+  geom_point(size=2)+
+  labs(title = "Indicator over time",
+       x     = "Year",
+       y     = "Value",
+       color = "Country") +
+  theme_bw() +
+  facet_wrap(~ Indicator, ncol = 2,scales = "free_y")+
+  theme(legend.position = "top")
+}
+
+```
+
+```{r echo=TRUE,message=FALSE, warning=FALSE}
+# Identify and filter data with missing data
+Indices_missing_values   <-which(per_non_na<1&per_non_na>0.8)
+plots_with_missing_values<-Original_Data[Indices_missing_values,]
+Data_with_missing_values2<-plots_with_missing_values%>%pivot_longer(!c("Country","Indicator"), names_to = "Year", values_to="Value")
+```
+
+```{r echo=TRUE,message=FALSE, warning=FALSE, fig.width=15, fig.height=35}
+plot_missing_values(Data_with_missing_values2)
+
+```
+
+### Filter variables with missing data in the last year
+
+We aim to confirm the availability of data for the most recent years. In cases where data is missing for the last few years, we will exclude variables with such missing data. We possess a dataset spanning 20 years, ranging from 2000 to 2019. When missing data aligns with these recent years, the imputation process becomes more uncertain, as we rely more on estimation than direct imputation.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+years        <- 2000:2019
+years        <- as.character(years)
+missing_data <- missing_data%>%dplyr::select(Country,Indicator,years)
+#filter last 4 years
+last_four_columns<-missing_data[c("2016","2017","2018","2019")]
+#identify the indicator with missing data for more than one year, including the year 2019
+aaa            <- rowSums(is.na(last_four_columns))
+remove_indices <- which(aaa>1&is.na(missing_data[,"2019"]))
+
+print("Total missing years")
+aaa[remove_indices] 
+```
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+#Remove rows 
+Data_with_more_80_per<-missing_data[-remove_indices,]
+```
+
+### Final removed data 
+
+```{r echo=FALSE,message=FALSE, warning=FALSE}
+removed_data1 <- Original_Data[data_less_80_per,]
+removed_data1 <- removed_data1%>%pivot_longer(!c("Country","Indicator"),names_to = "Year", values_to = "Values")
+
+removed_data2 <- missing_data[remove_indices,]
+removed_data2 <- removed_data2%>%pivot_longer(!c("Country","Indicator"),names_to = "Year", values_to = "Values")
+
+removed_data  <- rbind(removed_data1,removed_data2)
+
+removed_data <-removed_data%>%pivot_wider(names_from = Year, values_from = Values)%>%dplyr::select(c("Country","Indicator",years))
+
+DT::datatable(removed_data,class='cell-border stripe',rownames=F, filter="top", 
+editable=F, extension= "Buttons",
+options    = list(
+autoWidth  = TRUE, 
+scrollX    = TRUE,
+scrollY    = "200px",
+pageLength = 5,
+columnDefs = list(list(className = "dt-center", targets = "_all")),
+pageLength = nrow(removed_data),searchHighlight = TRUE,dom = "Bfrtip", buttons='excel'))
+```
+
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+## Function to Plot
+Plot_density <-function(Plot_Data){
+ggplot(Final_data, aes(x = Value, color = Country, group = Country)) +
+  geom_density() +
+  labs(title = "Density function",
+       x     = "Year",
+       y     = "Value",
+       color = "Country") +
+  theme_bw() +
+  facet_wrap(~ Indicator, ncol = 1,scales = "free_y")+
+  theme(axis.text.x = element_text(size = 10, angle = 90))
+}
+```
+
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+## Function to Plot
+Plot<-function(Plot_Data){
+ggplot(Plot_Data, aes(x = Year, y = Value, color = Country, group = Country)) +
+  geom_line()+
+   geom_point(size = 2) +
+  labs(title = "Indicator over time",
+       x     = "Year",
+       y     = "Value",
+       color = "Country") +
+  theme_bw() +
+  facet_wrap(~ Indicator, ncol = 1,scales = "free_y")+
+  theme(axis.text.x = element_text(size = 10, angle = 90))
+}
+```
+
+## Data Imputation
+
+### miceRanger Imputation
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+MiceRanger_imputation<-function(Data_by_country,columns_with_na){
+Data_by_country$Year<-as.numeric(Data_by_country$Year)
+# Create the imputation model using miceRanger
+mrModelOutput <- miceRanger(Data_by_country[,2:ncol(Data_by_country)],valueSelector ="value", cols =columns_with_na,verbose = FALSE, m=15)
+      dataList   <- completeData(mrModelOutput)
+      Filled_data<- data.frame(dataList[[1]])
+      p<-plotDistributions(mrModelOutput,vars='allNumeric')
+      # Return a list with imputed data and diagnostic figures
+      result <- list(imputed_data = Filled_data, mice_fig = p)
+  return(result)
+}
+```
+
+### Identify countries with missing data
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+per_non_na2 <- rowMeans(!is.na(Data_with_more_80_per[, 3:ncol(Data_with_more_80_per)]))
+countries_with_missing_Data<-unique(Data_with_more_80_per$Country[which(per_non_na2<1)])
+print(countries_with_missing_Data)
+
+#filter data without missing information
+rows_with_missing_data<-which(per_non_na2<1)
+Data_with_all_values<-Data_with_more_80_per[-rows_with_missing_data,]
+Data_with_all_values<-Data_with_all_values%>%pivot_longer(!c("Country","Indicator"),names_to = "Year", values_to = "Value")
+```
+
+### Fill the data by country
+
+```{r echo=TRUE, message=FALSE, warning=FALSE,fig.width=10,fig.height=5}
+final_imputed_data<-NULL
+for (Coutry_name in countries_with_missing_Data){
+    #filter data by country
+    Data_by_country<-Data_with_more_80_per%>%   filter(Country==Coutry_name)%>%  pivot_longer(!c("Country","Indicator"), names_to = "Year",        values_to="Value")%>%pivot_wider(names_from= Indicator, values_from = Value)
+
+Data_by_country<-as.data.frame(Data_by_country)
+
+#Identify variables with missing data to create a plot
+columns_with_na <-colnames(Data_by_country)[colMeans(is.na(Data_by_country))>0]
+
+print("---------------------------------------------------")
+print(paste("Country: ", Coutry_name,sep = ""))
+for (col in columns_with_na){
+  print(paste(col," Missing data: ", length(which(is.na(Data_by_country[,col])))))
+}
+
+#Aply imputation method
+MiceRanger_results <- MiceRanger_imputation(Data_by_country,columns_with_na)
+#Access imputed data
+MiceRanger_method <- MiceRanger_results$imputed_data
+#FIGURES
+#Data with missing data
+subdata_miceR  <- MiceRanger_method[, c("Year",columns_with_na)] 
+subdata_miceR  <- subdata_miceR%>%pivot_longer(!c("Year"),names_to = "Indicator", values_to = "Value")
+
+subdata_miceR$Country<-"Imputation"
+subdata_miceR<-subdata_miceR%>%dplyr::select(Country,Year,Indicator,Value)
+
+#Plot data with missing values
+Data_plot_missing_data <- Data_by_country[, c("Country", "Year", columns_with_na)]
+
+Data_plot_missing_data <- Data_plot_missing_data%>%pivot_longer(!c("Country","Year"),names_to = "Indicator",values_to = "Value")
+
+#Data with missing and imputed values
+Final_data <-rbind(subdata_miceR,Data_plot_missing_data)
+
+#FIGURES
+figs    <-Plot(Final_data)
+fig_dens<-Plot_density(Final_data)
+
+combined_plot <- grid.arrange(figs,fig_dens, ncol = 2)
+print(combined_plot)
+
+#Final Imputed Data
+final_imputed_file_per_country <-MiceRanger_method[,c("Year",columns_with_na)]
+
+final_imputed_file_per_country$Country <-Data_by_country$Country
+final_imputed_file_per_country<-final_imputed_file_per_country%>%pivot_longer(!c("Country", "Year"),names_to = "Indicator", values_to = "Value")
+
+final_imputed_file_per_country <- final_imputed_file_per_country%>%dplyr::select(colnames(Data_with_all_values))
+
+final_imputed_data<-rbind(final_imputed_file_per_country,final_imputed_data)
+}
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE}
+final_imputed_data1<-NULL
+final_imputed_data1<-rbind(Data_with_all_values,final_imputed_data)
+write.xlsx(final_imputed_data1, paste("./Final_imputed_data/Final_imputed_data",name_file,".xlsx",sep=""))
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+final_imputed_data1%>%download_this(
+    output_name      = "Imputed_data",
+    output_extension = ".xlsx",
+    button_label     = "Download imputed data xlsx",
+    button_type      = "success",
+    has_icon         = TRUE,
+    icon = "fa fa-save")
+```
+
+<br>
+*** 
+<br>
+##  Evaluate the effectiveness of the imputation method.
+
+Beginning with a dataset containing complete information, random NA values are intentionally introduced to simulate missing data. Following this, the imputation process is applied as previously described.
+
+*Note that the closer the density function of the imputed data is to the original data, the better the imputation.*
+
+```{r echo=FALSE, message=TRUE, warning=FALSE,fig.width=10,fig.height=5}
+test_data<-Data_with_all_values%>%pivot_wider(names_from = Year,values_from = Value)%>%dplyr::select(Country,Indicator,years)
+
+# Choose 3 random columns between 3 and 10
+set.seed(926)  
+random_column <- sample(3:15, 3, replace = FALSE)
+random_row    <- sample(1:nrow(test_data), 5, replace = FALSE)
+
+test_data[random_row,random_column]<-NA
+countries_tests<-unique(test_data$Country[random_row])
+
+for (Coutry_name in countries_tests){
+    #filter data by country
+    Data_by_country<-test_data%>%
+    filter(Country==Coutry_name)%>%
+    pivot_longer(!c("Country","Indicator"), names_to = "Year",
+                 values_to="Value")%>%
+    pivot_wider(names_from= Indicator, values_from = Value)
+
+    Data_by_country<-as.data.frame(Data_by_country)
+    
+    ##Original data
+    Data_by_country_original<-Data_with_all_values%>%
+    filter(Country==Coutry_name)%>%
+    pivot_wider(names_from= Indicator, values_from = Value)
+    Data_by_country_original<-as.data.frame(Data_by_country_original)
+
+#Identify variables with missing data to create a plot
+columns_with_na <-colnames(Data_by_country)[colMeans(is.na(Data_by_country))>0]
+
+print("---------------------------------------------------")
+print(paste("Country: ", Coutry_name,sep = ""))
+for (col in columns_with_na){
+  print(paste(col," Missing data: ", length(which(is.na(Data_by_country[,col])))))
+}
+
+#Aply imputation method
+MiceRanger_results <- MiceRanger_imputation(Data_by_country,columns_with_na)
+
+#Access imputed data
+MiceRanger_method <- MiceRanger_results$imputed_data
+
+#FIGURES
+#Data with missing data
+subdata_miceR  <- MiceRanger_method[, c("Year",columns_with_na)] 
+subdata_miceR  <- subdata_miceR%>%pivot_longer(!c("Year"),names_to = "Indicator", values_to = "Value")
+
+subdata_miceR$Country<-"Imputation"
+subdata_miceR<-subdata_miceR%>%dplyr::select(Country,Year,Indicator,Value)
+
+#Plot data with missing values
+Data_plot_missing_data <- Data_by_country_original[, c("Country", "Year", columns_with_na)]
+
+Data_plot_missing_data <- Data_plot_missing_data%>%pivot_longer(!c("Country","Year"),names_to = "Indicator",values_to = "Value")
+
+#Data with missing and imputed values
+Final_data <-rbind(subdata_miceR,Data_plot_missing_data)
+
+#FIGURES
+figs    <-Plot(Final_data)
+fig_dens<-Plot_density(Final_data)
+
+combined_plot <- grid.arrange(figs,fig_dens, ncol = 2)
+print(combined_plot)
+}
+```
+
+<br>
+*** 
+<br>
+
+<br>
+**Analysis created by:**<br>
+</a><a href="https://paginas.cimpa.ucr.ac.cr/Epimec/"> Dr. Fabio Sanchez’s Research Team</a><br>
+CIMPA<br>
+Universidad de Costa Rica<br>
+Email: epimec.cr@gmail.com<br>
+

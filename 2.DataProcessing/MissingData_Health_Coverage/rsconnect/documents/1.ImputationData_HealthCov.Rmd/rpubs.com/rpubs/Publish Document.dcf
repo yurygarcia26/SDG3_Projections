@@ -1,0 +1,11 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/1077875/aac50d93313e40d394c57cfc40434d51
+bundleId: https://api.rpubs.com/api/v1/document/1077875/aac50d93313e40d394c57cfc40434d51
+url: http://rpubs.com/EpiMEC/1077875
+when: 1693863320.33157
+lastSyncTime: 1693863320.33158

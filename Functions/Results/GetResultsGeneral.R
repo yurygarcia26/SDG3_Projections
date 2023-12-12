@@ -1,6 +1,8 @@
 get_results <- function(region, region_col,
 Data_used, hyper_tune, cv, Outcome_name, ..., use_all=FALSE, add_fit=TRUE){
 
+  parentDir <- getwd()  # Make sure to choose the root directory as working directory
+
   start_time <- Sys.time()
   cat(paste(" ==== ", region, " ==== \n"))
 
@@ -81,7 +83,7 @@ Data_used, hyper_tune, cv, Outcome_name, ..., use_all=FALSE, add_fit=TRUE){
     best_s = model_results_use$best_s # In case of lasso model
   }
 
-  saveRDS(model_selected, paste("./Models/best_model_", region, "_", Outcome_name, ".rds", sep=""))
+  saveRDS(model_selected, paste(parentDir, "/Data/Models/best_model_", region, "_", Outcome_name, ".rds", sep=""))
 
   # Save information by region
   info_df_region <- data.frame(Relevant_Var = model_results_use$features)  # Selected variables
